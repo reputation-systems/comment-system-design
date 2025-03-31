@@ -8,7 +8,7 @@ Basically, we should reuse this code: [generate_reputation_proof.ts](https://git
 ## Mechanism  
 As you can see, the mechanism is simple (and if not, I'll explain it here):  
 
-- A token is minted with an amount of 1.  
+- A token is minted.
 - Spending script: [Smart Contract Logic](https://github.com/reputation-systems/sigma-reputation-panel/tree/master?tab=readme-ov-file#-smart-contract-logic).  
 - **R4** is used to indicate a tag—the type of object.  
 - **R5** specifies the type of the referenced value, for example, `plain/text-utf8`.  
@@ -20,11 +20,12 @@ As you can see, the mechanism is simple (and if not, I'll explain it here):
 ### Example  
 To comment on the **Gluon Security Audit** project:  
 
+- token minted with an amount of 1; for the comment use-case an amount of one is sufficient.
 - **R4**: comment  
 - **R5**: bene-ergo.project  
 - **R6**: fe68b9c73c341f14f531eed94a582386b0592db5e254e68576199e79e4d698a7  
 - **R7**: wallet-pk  
-- **R8**: true  
+- **R8**: true  (positive)
 - **R9**: "This has been a fantastic contribution, thanks all."  
 
 ## Responses to Comments  
@@ -34,8 +35,8 @@ Then, we can have responses to those comments. For example, considering that our
 - **R5**: comment  
 - **R6**: abcdefg  
 - **R7**: pk-1kzjflj13j4l  
-- **R8**: true  
-- **R9**: "Yeah, you are right, but this other token will be to the moon ..."  
+- **R8**: true   (positive)
+- **R9**: "Yeah, you're right, but this other token is going to the moon..."  
 
 Now, consider that this response has the token ID `bb22bb11`. If a user identifies it as spam, they will add another transaction like this:  
 
@@ -43,7 +44,7 @@ Now, consider that this response has the token ID `bb22bb11`. If a user identifi
 - **R5**: comment  
 - **R6**: bb22bb11  
 - **R7**: pk-1j4lkjfljda  
-- **R8**: negative  
+- **R8**: false (negative)  
 - **R9**: ""  
 
 ## Spam Detection Mechanism  
