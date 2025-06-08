@@ -1,58 +1,43 @@
-# Comment System Design  
+### **Comment System Design**
 
-## Overview  
-First, I'm going to explain how we could define comments based on [this repository](https://github.com/reputation-systems/sigma-reputation-panel/tree/master).  
+#### **Overview**
 
-Basically, we should reuse this code: [generate_reputation_proof.ts](https://github.com/reputation-systems/sigma-reputation-panel/blob/master/src/lib/generate_reputation_proof.ts).  
+This document describes a decentralized comment system on the Ergo blockchain. It allows users to post immutable comments, reply to other comments to create discussion threads, and flag content as spam.
 
-## Mechanism  
-As you can see, the mechanism is simple (and if not, I'll explain it here):  
+#### **Interaction Mechanism**
 
-- A token is minted.
-- Spending script: [Smart Contract Logic](https://github.com/reputation-systems/sigma-reputation-panel/tree/master?tab=readme-ov-file#-smart-contract-logic).  
-- **R4** is used to indicate a tag—the type of object.  
-- **R5** specifies the type of the referenced value, for example, `plain/text-utf8`.  
-- **R6** specifies the referenced value, in our case, a "bene" project.  
-- **R7** is used to specify the user's address.  
-- **R8** indicates whether the comment is positive or negative.  
-- **R9** allows adding a JSON, in our case.  
+Each action (commenting, replying, flagging as spam) creates a box on the blockchain with a specific structure. Once published, comments cannot be edited.
 
-### Example  
-To comment on the **Gluon Security Audit** project:  
+**1. Commenting on a Main Object (e.g., a Project)**
+A box is created pointing to the object being commented on.
 
-- token minted with an amount of 1; for the comment use-case an amount of one is sufficient.
-- **R4**: comment  
-- **R5**: bene-ergo.project  
-- **R6**: fe68b9c73c341f14f531eed94a582386b0592db5e254e68576199e79e4d698a7  
-- **R7**: wallet-pk  
-- **R8**: true  (positive)
-- **R9**: "This has been a fantastic contribution, thanks all."  
+* **Object Type:** `"bene-ergo.project"`
+* **Object Pointer:** Project ID (e.g., `"fe68...98a7"`)
+* **Author:** User’s public key.
+* **Opinion:** `true` (Positive).
+* **Content:** `"It has been a fantastic contribution, thanks to everyone."`
 
-## Responses to Comments  
-Then, we can have responses to those comments. For example, considering that our previous comment ID (minted token ID) is `abcdefg`, a response would be:  
+**2. Replying to a Comment**
+To create a thread, a reply is made to an existing comment by referencing its token ID.
 
-- **R4**: comment  
-- **R5**: comment  
-- **R6**: abcdefg  
-- **R7**: pk-1kzjflj13j4l  
-- **R8**: true   (positive)
-- **R9**: "Yeah, you're right, but this other token is going to the moon..."  
+* **Object Type:** `"comment"`
+* **Object Pointer:** Token ID of the parent comment (e.g., `"abcdefg"`)
+* **Author:** Public key of the new user.
+* **Opinion:** `true` (Agreement).
+* **Content:** `"Yes, you're right, but..."`
 
-Now, consider that this response has the token ID `bb22bb11`. If a user identifies it as spam, they will add another transaction like this:  
+**3. Flagging a Comment as Spam**
+An alert is created pointing to the comment considered as spam.
 
-- **R4**: spam-alert  
-- **R5**: comment  
-- **R6**: bb22bb11  
-- **R7**: pk-1j4lkjfljda  
-- **R8**: false (negative)  
-- **R9**: ""  
+* **Object Type:** `"spam-alert"`
+* **Object Pointer:** Token ID of the flagged comment (e.g., `"bb22bb11"`)
+* **Author:** Public key of the user who raised the alert.
+* **Opinion:** `false` (Negative).
+* **Content:** (Empty).
 
-## Spam Detection Mechanism  
-At this point, if there are **N** boxes identifying a comment as spam, we will mark it as spam. As developers, we can consider **N** as a constant in the application, but users will still have the option to see spam comments if they disable the spam filter.  
+#### **Application Logic (Off-Chain)**
 
-## Additional Contract Changes
+Rendering and filtering are handled by the client application (the web interface).
 
-It is necessary to make some changes to the contract. A new field will be added to indicate whether the contract cannot be spent again, ensuring that comments cannot be edited.To achieve this, R5 and R6 will be merged into a single record.
-
-
-
+* **Discussion Threads:** The application reconstructs threads by linking replies to their parent comments.
+* **Spam Filtering:** A comment is hidden by default if it receives **N** spam alerts. The value of **N** is decided by the application, and end users will always have the option to disable the filter to view all content.
