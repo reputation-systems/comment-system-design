@@ -41,3 +41,31 @@ Rendering and filtering are handled by the client application (the web interface
 
 * **Discussion Threads:** The application reconstructs threads by linking replies to their parent comments.
 * **Spam Filtering:** A comment is hidden by default if it receives **N** spam alerts. The value of **N** is decided by the application, and end users will always have the option to disable the filter to view all content.
+
+
+### TypeScript implementation
+
+
+```typescript
+// TypeScript SDK function declarations (implementations omitted)
+export async function postComment(
+  projectId: string,
+  authorKey: string,
+  text: string
+): Promise<string>;
+
+export async function replyToComment(
+  parentTokenId: string,
+  authorKey: string,
+  text: string
+): Promise<string>;
+
+export async function flagSpam(
+  targetTokenId: string,
+  authorKey: string
+): Promise<string>;
+
+export async function fetchThreads(
+  projectId: string
+): Promise<any[]>;
+```
