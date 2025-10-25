@@ -14,3 +14,4 @@ export const types = writable<Map<string, TypeNFT>>(new Map());
 
 // Main store for holding fetched reputation proofs, keyed by token ID.
 export const proofs = writable<Map<string, ReputationProof>>(new Map());
+export const reputation_proof = writable<ReputationProof | null>(null);

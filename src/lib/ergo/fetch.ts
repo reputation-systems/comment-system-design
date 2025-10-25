@@ -1,10 +1,10 @@
-import { Network, type RPBox, type ReputationProof, type TypeNFT } from "$lib/ReputationProof";
-import { hexToBytes, hexToUtf8, serializedToRendered, SString } from "$lib/utils";
+import { Network, type RPBox, type ReputationProof, type TypeNFT } from "$lib/ergo/object";
+import { hexToBytes, hexToUtf8, serializedToRendered, SString } from "$lib/ergo/utils";
 import { get } from "svelte/store";
 import { connected, proofs, types } from "./store";
-import { digital_public_good_contract_hash, ergo_tree, ergo_tree_hash, explorer_uri } from "./envs";
+import { explorer_uri } from "./envs";
+import { digital_public_good_contract_hash, ergo_tree, ergo_tree_hash } from "$lib/ergo/contract";
 import { ErgoAddress, SByte, SColl } from "@fleet-sdk/core";
-import { blake2b256 } from "@fleet-sdk/crypto";
 
 type RegisterValue = { renderedValue: string; serializedValue: string; };
 type ApiBox = {
