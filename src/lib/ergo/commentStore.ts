@@ -36,7 +36,7 @@ export async function getOrCreateProfileBox(): Promise<RPBox> {
             PROFILE_TYPE_NFT_ID,
             undefined,
             true,
-            JSON.stringify({ name: "Anon" }),
+            { name: "Anon" },
             false, // La caja de perfil NO debe estar bloqueada
             undefined
         );

@@ -3,10 +3,8 @@ import {
     ErgoAddress, SByte, SColl, SConstant, SGroupElement,
     type Box,
     type InputBox,
-    type Amount,
-    type TokenEIP4 // <-- Importar TokenEIP4
+    type Amount
 } from '@fleet-sdk/core';
-import type { GameContent } from "../common/game"; // <-- Importar GameContent
 
 export function hexToUtf8(hexString: string): string | null {
     try {
@@ -31,7 +29,7 @@ export function generate_pk_proposition(wallet_pk: string): string {
 }
 
 export function SString(value: string): string {
-    return SConstant(SColl(SByte, stringToBytes('utf8', value)));
+    return SColl(SByte, hexToBytes(value) ?? "").toHex();
 }
 
 export function uint8ArrayToHex(array: Uint8Array): string { 

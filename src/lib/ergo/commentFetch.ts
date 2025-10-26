@@ -213,7 +213,7 @@ async function fetchProfileUserBoxes(r7SerializedHex: string): Promise<ApiBox[]>
       }
 
       const filteredBoxes = jsonData.items
-        // .filter((box: ApiBox) => box.additionalRegisters.R5.serializedValue === box.assets[0].tokenId)
+        .filter((box: ApiBox) => box.additionalRegisters.R5.renderedValue === box.assets[0].tokenId)
         .sort((a: ApiBox, b: ApiBox) => b.creationHeight - a.creationHeight);
 
       allBoxes.push(...filteredBoxes as ApiBox[]);
@@ -224,7 +224,7 @@ async function fetchProfileUserBoxes(r7SerializedHex: string): Promise<ApiBox[]>
     }
   }
 
-  console.log(allBoxes.map(box => box.additionalRegisters))
+  console.log(allBoxes.map(box => box.additionalRegisters.R5.renderedValue))
   console.log(allBoxes.map(box => box.boxId))
 
   return allBoxes;
