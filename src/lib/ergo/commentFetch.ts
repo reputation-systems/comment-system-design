@@ -4,6 +4,7 @@ import { hexToBytes, hexToUtf8 } from './utils';
 import { explorer_uri, PROFILE_TYPE_NFT_ID } from './envs';
 import { ergo_tree_hash } from './contract';
 import { type TypeNFT, type ReputationProof, type RPBox } from './object';
+import { reputation_proof } from './store';
 
 // Definición mínima de la respuesta de la API de Explorer para una caja
 interface ApiBox {
@@ -309,7 +310,7 @@ function convertToRPBox(box: ApiBox, profileTokenId: string): RPBox | null {
  * buscando todas las cajas donde R7 coincida con su dirección.
  * @param ergo El objeto de la billetera conectada (ej. dApp Connector)
  */
-export async function fetchProfile(ergo: any): Promise<void> {
+export async function fetchProfile(ergo: any): Promise<ReputationProof | null> {
   try {
     // 1. Get serialized R7 and change address
     const r7Data = await getSerializedR7(ergo);
@@ -366,8 +367,12 @@ export async function fetchProfile(ergo: any): Promise<void> {
 
     console.log(`Perfil encontrado: ${proof.token_id}, ${proof.number_of_boxes} cajas.`, proof);
     reputation_proof.set(proof);
+
+    return proof;
+    
   } catch (error) {
     console.error('Error fetching profile:', error);
     reputation_proof.set(null);
+    return null;
   }
 }

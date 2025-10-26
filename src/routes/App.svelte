@@ -19,6 +19,7 @@
     import { explorer_uri } from '$lib/ergo/envs';
     import { get } from 'svelte/store';
     import { fetchProfile } from '$lib/ergo/commentFetch';
+    import { ReputationProof } from '$lib/ergo/object';
 
     // --- Lógica del Componente de Chat ---
     
@@ -28,6 +29,8 @@
      * Si 'comment' es un objeto, renderiza ese comentario y sus respuestas.
      */
     export let comment: any | null = null;
+
+    let profile: ReputationProof | null = null;
     
     // Proyectos simulados
     const projects = [
@@ -191,7 +194,7 @@
         
         await connectWallet();
 
-        await fetchProfile(ergo);
+        profile = await fetchProfile(ergo);
         
         balanceUpdateInterval = setInterval(updateWalletInfo, 30000);
         
@@ -254,9 +257,9 @@
             
             <h1 class="text-3xl font-bold mb-6">Comentarios del Proyecto</h1>
 
-            {#if get(reputation_proof) !== null}
+            {#if profile !== null}
                 <div class="mb-6 p-4 bg-green-100 dark:bg-green-900 border border-green-400 rounded-md text-green-800 dark:text-green-200">
-                    Your profile id: {get(reputation_proof)?.token_id}.
+                    Your profile id: {profile?.token_id}.
                 </div>
             {:else}
                 <div class="mb-6 p-4 bg-yellow-100 dark:bg-yellow-900 border border-yellow-400 rounded-md text-yellow-800 dark:text-yellow-200">
