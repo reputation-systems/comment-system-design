@@ -7,6 +7,7 @@ import { type RPBox } from '$lib/ergo/object';
 // Importando la nueva interfaz de comentario
 import { type Comment } from './commentObject';
 import { fetchComments } from './commentFetch';
+import { COMMENT_TYPE_NFT_ID, DISCUSSION_TYPE_NFT_ID, PROFILE_TOTAL_SUPPLY, PROFILE_TYPE_NFT_ID, SPAM_FLAG_NFT_ID } from './envs';
 
 // --- API (Simulada) ---
 
@@ -16,15 +17,11 @@ async function fetchThreadsAPI(projectId: string): Promise<Comment[]> {
     return await fetchComments(projectId);
 }
 
-// --- Constantes de Prueba de Reputación de Perfil ---
-const PROFILE_TYPE_NFT_ID = "1820fd428a0b92d61ce3f86cd98240fdeeee8a392900f0b19a2e017d66f79926";
-const PROFILE_TOTAL_SUPPLY = 99999999;
-
 /**
  * Obtiene la caja principal (con más tokens) del 'reputation_proof' store.
  * Si el store está vacío, intenta crear la prueba de perfil inicial.
  */
-async function getOrCreateProfileBox(): Promise<RPBox> {
+export async function getOrCreateProfileBox(): Promise<RPBox> {
     // Asumimos que reputation_proof es un store: { current_boxes: RPBox[] }
     // y que RPBox tiene: { box_id: string, token_id: string, token_amount: number, is_locked: boolean }
     const proof = get(reputation_proof);
@@ -48,7 +45,7 @@ async function getOrCreateProfileBox(): Promise<RPBox> {
             throw new Error("Error fatal: La transacción de creación de perfil falló al enviarse.");
         }
         
-        throw new Error("Perfil de usuario no encontrado. Se ha creado uno nuevo. Por favor, espera ~2 minutos a que la transacción se confirme e inténtalo de nuevo.");
+        console.warn("Perfil de usuario no encontrado. Se ha creado uno nuevo. Por favor, espera ~2 minutos a que la transacción se confirme e inténtalo de nuevo.");
     }
 
     // --- Caso 2: La prueba de perfil SÍ existe ---
@@ -78,7 +75,7 @@ async function postCommentAPI(projectId: string, text: string): Promise<Comment>
     const tx = await generate_reputation_proof(
         1,
         PROFILE_TOTAL_SUPPLY,
-        "273f60541e8869216ee6aed5552e522d9bea29a69d88e567d089dc834da227cf",  // Ex: Discussion Type NFT ID
+        DISCUSSION_TYPE_NFT_ID,  // Ex: Discussion Type NFT ID
         projectId, // El 'target' de la prueba es el ID de la discusión/proyecto
         true,  // Polarización (true/false)
         text,  // Contenido del comentario
@@ -113,7 +110,7 @@ async function replyToCommentAPI(parentCommentId: string, projectId: string, tex
     const tx = await generate_reputation_proof(
         1,
         PROFILE_TOTAL_SUPPLY,
-        "6c1ec833dc4aff98458b60e278fc9a0161274671d6a0c36a7429216ca99c3267",  // Ex: Comment Type NFT ID
+        COMMENT_TYPE_NFT_ID,  // Ex: Comment Type NFT ID
         parentCommentId, // El 'target' de la prueba es el 'id' (box_id) del comentario padre
         true,
         text,
@@ -147,7 +144,7 @@ async function flagSpamAPI(targetCommentId: string): Promise<{ targetCommentId: 
     const tx = await generate_reputation_proof(
         1,
         PROFILE_TOTAL_SUPPLY,
-        "89505ed416ad43f2dc4b3c8d0eb949e6ba9993436ceb154a58645f1484e1437a",  // Ex: Spam Type NFT ID
+        SPAM_FLAG_NFT_ID,  // Ex: Spam Type NFT ID
         targetCommentId, // El 'target' es el 'id' (box_id) del comentario a marcar
         true,
         null,
@@ -191,7 +188,7 @@ export async function postComment(text: string) {
     currentProjectId.subscribe(id => projectId = id)();
 
     try {
-        // 1. Llama a la API (sin authorKey)
+        // 1. Llama a la API
         const newComment = await postCommentAPI(projectId, text);
 
         // 2. Actualiza el store localmente

@@ -13,13 +13,13 @@
         loadThreads,
         postComment,
         replyToComment,
-        flagSpam
+        flagSpam,
+        getOrCreateProfileBox
     } from '$lib/ergo/commentStore';
-    import { address, connected, balance, network, reputation_proof } from "$lib/ergo/store";
+    import { address, connected, balance, network } from "$lib/ergo/store";
     import { explorer_uri } from '$lib/ergo/envs';
-    import { get } from 'svelte/store';
     import { fetchProfile } from '$lib/ergo/commentFetch';
-    import { ReputationProof } from '$lib/ergo/object';
+    import { type ReputationProof } from '$lib/ergo/object';
 
     // --- Lógica del Componente de Chat ---
     
@@ -97,6 +97,12 @@
         isFlagging = true;
         await flagSpam(comment.tokenId); // <-- Llama al store
         isFlagging = false;
+    }
+
+    async function handleCreateProfile() {
+        if (!profile) {
+            getOrCreateProfileBox();
+        }
     }
     
     // Reacciona a cambios en el selector de proyecto
@@ -265,6 +271,12 @@
                 <div class="mb-6 p-4 bg-yellow-100 dark:bg-yellow-900 border border-yellow-400 rounded-md text-yellow-800 dark:text-yellow-200">
                     You don't have a reputation profile yet. Participate in the community to earn one!
                 </div>
+
+                <form on:submit|preventDefault={handleCreateProfile} class="space-y-4 mb-8">
+                    <Button type="submit" class="w-full sm:w-auto">
+                        {isPostingComment ? "Creando..." : "Crear Perfil"}
+                    </Button>
+                </form>
             {/if}
 
             <form on:submit|preventDefault={handlePostComment} class="space-y-4 mb-8">

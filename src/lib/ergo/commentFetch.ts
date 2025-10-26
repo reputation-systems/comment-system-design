@@ -175,13 +175,14 @@ async function getSerializedR7(ergo: any): Promise<{ changeAddress: string; r7Se
 }
 
 // Fetch all user boxes with pagination
-async function fetchAllUserBoxes(r7SerializedHex: string): Promise<ApiBox[]> {
+async function fetchProfileUserBoxes(r7SerializedHex: string): Promise<ApiBox[]> {
   const allBoxes: ApiBox[] = [];
   let offset = 0;
   let moreDataAvailable = true;
 
   const searchBody: SearchBody = { registers: {
     // R7: r7SerializedHex
+    // R4: PROFILE_TYPE_NFT_ID
   } }; // Adjust if R7 is needed
 
   while (moreDataAvailable) {
@@ -211,10 +212,8 @@ async function fetchAllUserBoxes(r7SerializedHex: string): Promise<ApiBox[]> {
         continue;
       }
 
-      const filteredBoxes = jsonData.items.filter((box) => box.additionalRegisters.R7 === r7SerializedHex);
-      console.log(filteredBoxes)
-
-      allBoxes.push(...jsonData.items as ApiBox[]);
+      const filteredBoxes = jsonData.items.filter((box: any) => box.additionalRegisters.R7.serializedValue === r7SerializedHex && box.additionalRegisters.R4.renderedValue === PROFILE_TYPE_NFT_ID);
+      allBoxes.push(...filteredBoxes as ApiBox[]);
       offset += LIMIT_PER_PAGE;
     } catch (e) {
       console.error("fetchAllUserBoxes: Error during fetch", e);
@@ -316,25 +315,33 @@ export async function fetchProfile(ergo: any): Promise<ReputationProof | null> {
     const r7Data = await getSerializedR7(ergo);
     if (!r7Data) {
       reputation_proof.set(null);
-      return;
+      return null;
     }
     const { changeAddress, r7SerializedHex } = r7Data;
     console.log(`Fetching profile for R7: ${r7SerializedHex}`);
 
     // 2. Fetch all user boxes
-    const allUserBoxes = await fetchAllUserBoxes(r7SerializedHex);
+    const allUserBoxes = await fetchProfileUserBoxes(r7SerializedHex);
     if (allUserBoxes.length === 0) {
       console.log('No profile boxes found for this user.');
       reputation_proof.set(null);
-      return;
+      return null;
     }
 
-    // 3. Get profile token ID and emission amount
-    const profileTokenId = allUserBoxes[0].assets[0].tokenId;
+    if (allUserBoxes.length === 0) {
+      reputation_proof.set(null);
+      console.warn("No profile boxes found for this user.");
+      return null;
+    }
+
+    const first_box = allUserBoxes[0];
+
+    const profileTokenId = first_box.assets[0].tokenId;
     const emissionAmount = await fetchTokenEmissionAmount(profileTokenId);
     if (emissionAmount === null) {
       reputation_proof.set(null);
-      return;
+      console.warn("fetchTokenEmissionAmount returned null.")
+      return null;
     }
 
     // 4. Initialize ReputationProof
@@ -351,25 +358,22 @@ export async function fetchProfile(ergo: any): Promise<ReputationProof | null> {
       network: Network.ErgoMainnet,
     };
 
-    // 5. Convert boxes to RPBox and update proof
-    for (const box of allUserBoxes) {
-      const rpBox = convertToRPBox(box, profileTokenId);
-      if (!rpBox) continue;
-
-      if (rpBox.object_pointer === proof.token_id && rpBox.type.tokenId === PROFILE_TYPE_NFT_ID) {
-        proof.type = rpBox.type;
-        proof.data = rpBox.content;
-      }
-
-      proof.current_boxes.push(rpBox);
-      proof.number_of_boxes += 1;
+    const rpbox = convertToRPBox(first_box, profileTokenId);
+    if (!rpbox) {
+      reputation_proof.set(null);
+      console.warn("convertToRPBox returned null.")
+      return null;
     }
+
+    proof.current_boxes.push(rpbox);
+    proof.number_of_boxes += 1;
 
     console.log(`Perfil encontrado: ${proof.token_id}, ${proof.number_of_boxes} cajas.`, proof);
     reputation_proof.set(proof);
 
+    console.log(proof)
     return proof;
-    
+
   } catch (error) {
     console.error('Error fetching profile:', error);
     reputation_proof.set(null);
