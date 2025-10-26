@@ -49,7 +49,7 @@ export async function getOrCreateProfileBox(): Promise<RPBox> {
     }
 
     // --- Caso 2: La prueba de perfil SÍ existe ---
-    const mainBox = proof.current_boxes.sort((a: RPBox, b: RPBox) => b.token_amount - a.token_amount)[0];
+    const mainBox = proof.current_boxes[0];
 
     if (mainBox.is_locked) {
         throw new Error("Error: La caja de tu perfil principal está bloqueada (is_locked=true) y no se puede gastar.");
