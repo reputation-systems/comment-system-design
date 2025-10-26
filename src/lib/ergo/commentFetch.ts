@@ -1,6 +1,6 @@
 import { ErgoAddress, Network, SByte, SColl } from '@fleet-sdk/core';
 import { type Comment } from './commentObject';
-import { hexToBytes, hexToUtf8 } from './utils'; 
+import { hexToBytes, hexToUtf8, serializedToRendered } from './utils'; 
 import { explorer_uri, PROFILE_TYPE_NFT_ID } from './envs';
 import { ergo_tree_hash } from './contract';
 import { type TypeNFT, type ReputationProof, type RPBox } from './object';
@@ -181,8 +181,8 @@ async function fetchProfileUserBoxes(r7SerializedHex: string): Promise<ApiBox[]>
   let moreDataAvailable = true;
 
   const searchBody: SearchBody = { registers: {
-    // R7: r7SerializedHex
-    // R4: PROFILE_TYPE_NFT_ID
+    R7: serializedToRendered(r7SerializedHex),
+    R4: PROFILE_TYPE_NFT_ID
   } }; // Adjust if R7 is needed
 
   while (moreDataAvailable) {
@@ -212,9 +212,10 @@ async function fetchProfileUserBoxes(r7SerializedHex: string): Promise<ApiBox[]>
         continue;
       }
 
-      const filteredBoxes = jsonData.items.filter((box: any) => box.additionalRegisters.R7.serializedValue === r7SerializedHex && box.additionalRegisters.R4.renderedValue === PROFILE_TYPE_NFT_ID);
+      const filteredBoxes = jsonData.items.sort((a: ApiBox, b: ApiBox) => b.creationHeight - a.creationHeight);
       allBoxes.push(...filteredBoxes as ApiBox[]);
       offset += LIMIT_PER_PAGE;
+      
     } catch (e) {
       console.error("fetchAllUserBoxes: Error during fetch", e);
       moreDataAvailable = false;
