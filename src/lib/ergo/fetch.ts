@@ -1,8 +1,8 @@
 import { Network, type RPBox, type ReputationProof, type TypeNFT } from "$lib/ergo/object";
 import { hexToBytes, hexToUtf8, serializedToRendered, SString } from "$lib/ergo/utils";
 import { get } from "svelte/store";
-import { connected, proofs, types } from "./store";
-import { explorer_uri } from "./envs";
+import { connected, proofs, reputation_proof, types } from "./store";
+import { explorer_uri, PROFILE_TYPE_NFT_ID } from "./envs";
 import { digital_public_good_contract_hash, ergo_tree, ergo_tree_hash } from "$lib/ergo/contract";
 import { ErgoAddress, SByte, SColl } from "@fleet-sdk/core";
 
@@ -223,22 +223,207 @@ export async function updateReputationProofList(
 }
 
 /**
- * Retrieves all boxes (RPBox) associated with a specific ReputationProof.
- * @param proof The ReputationProof object from which to extract the boxes.
- * @returns An array of RPBox objects.
+ * Obtiene el objeto ReputationProof completo del usuario conectado,
+ * buscando todas las cajas donde R7 coincida con su dirección.
+ * * @param ergo El objeto de la billetera conectada (ej. dApp Connector)
  */
-export function getAllRPBoxesFromProof(proof: ReputationProof): RPBox[] {
-    return proof.current_boxes;
-}
+export async function fetchProfile(ergo: any) {
 
-/**
- * Finds and returns the ReputationProof to which a specific RPBox belongs.
- * This function retrieves the complete map of proofs from the 'proofs' Svelte store.
- * @param box The RPBox for which to find its parent ReputationProof.
- * @returns The corresponding ReputationProof or 'undefined' if not found.
- */
-export function getReputationProofFromRPBox(
-    box: RPBox
-): ReputationProof | undefined {
-    return get(proofs).get(box.token_id);
+    // 1. Obtener la dirección de cambio y calcular el R7 serializado
+    let userR7SerializedHex: string;
+    let change_address: string;
+    
+    if (!ergo) {
+        console.error("fetchProfile: El objeto 'ergo' no está disponible.");
+        return null;
+    }
+
+    try {
+        change_address = await ergo.get_change_address();
+        if (!change_address) {
+            console.warn("fetchProfile: No se pudo obtener la dirección de cambio.");
+            return null;
+        }
+        
+        const userAddress = ErgoAddress.fromBase58(change_address);
+        const propositionBytes = hexToBytes(userAddress.ergoTree);
+        
+        if (!propositionBytes) {
+            console.error("fetchProfile: No se pudieron obtener los propositionBytes.");
+            return null;
+        }
+        
+        userR7SerializedHex = SColl(SByte, propositionBytes).toHex();
+        
+    } catch (e) {
+        console.error("fetchProfile: Error al obtener la dirección del usuario", e);
+        return null;
+    }
+
+    console.log(`Buscando perfil para R7: ${userR7SerializedHex}`);
+
+    // 2. Definir el cuerpo de la búsqueda (solo por R7 y el hash del contrato)
+    const search_body = {
+        registers: { 
+            "R7": userR7SerializedHex
+        }
+    }
+    
+    const all_user_boxes: ApiBox[] = [];
+
+    try {
+        // 3. Bucle de paginación para obtener TODAS las cajas del usuario
+        let offset = 0, limit = 100, moreDataAvailable = true;
+        
+        while (moreDataAvailable) {
+            const url = `${explorer_uri}/api/v1/boxes/unspent/search?offset=${offset}&limit=${limit}`;
+            const final_body = { 
+                "ergoTreeTemplateHash": ergo_tree_hash, 
+                "registers": search_body.registers,
+                "assets": [] 
+            };
+            
+            const response = await fetch(url, { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify(final_body) 
+            });
+
+            if (!response.ok) {
+                console.error(`Error al buscar perfil: ${response.statusText}`);
+                moreDataAvailable = false;
+                continue;
+            }
+
+            const json_data = await response.json();
+            if (!json_data.items || json_data.items.length === 0) {
+                moreDataAvailable = false;
+                continue;
+            }
+
+            all_user_boxes.push(...json_data.items as ApiBox[]);
+            offset += limit;
+        }
+
+        // 4. Si no se encontraron cajas, el usuario no tiene perfil
+        if (all_user_boxes.length === 0) {
+            console.log("No se encontró ninguna caja de perfil para este usuario.");
+            return null;
+        }
+
+        // 5. Encontrar el Token ID del perfil y obtener su total_amount
+        // Asumimos que todas las cajas pertenecen al mismo token
+        const profileTokenId = all_user_boxes[0].assets[0].tokenId;
+
+        const tokenResponse = await fetch(`${explorer_uri}/api/v1/tokens/${profileTokenId}`);
+        if (!tokenResponse.ok) {
+            console.error(`Error al obtener la cantidad emitida del token ${profileTokenId}`);
+            return null; // Error crítico
+        }
+        const tokenData = await tokenResponse.json();
+        const emissionAmount = Number(tokenData.emissionAmount || 0);
+
+        // 6. Construir el objeto ReputationProof base
+        const proof: ReputationProof = {
+            token_id: profileTokenId,
+            // El 'type' y 'data' se llenarán al encontrar la caja de perfil principal
+            type: { tokenId: "", boxId: '', typeName: "N/A", description: "...", schemaURI: "", isRepProof: false },
+            data: null,
+            total_amount: emissionAmount,
+            owner_address: change_address,
+            owner_serialized: userR7SerializedHex,
+            can_be_spend: true, // Encontramos las cajas por su R7, así que puede gastarlas
+            current_boxes: [],
+            number_of_boxes: 0,
+            network: Network.ErgoMainnet, // Asumir Mainnet
+        };
+
+        // 7. Iterar sobre todas las cajas encontradas y convertirlas a RPBox
+        for (const box of all_user_boxes) {
+            
+            // Validar que la caja realmente pertenezca a este token de perfil
+            if (!box.assets?.length || box.assets[0].tokenId !== profileTokenId) {
+                console.warn(`Caja ${box.boxId} tiene R7 del usuario pero un token ID diferente. Omitiendo.`);
+                continue;
+            }
+
+            // Validar que tenga los registros mínimos
+            if (!box.additionalRegisters.R4 || !box.additionalRegisters.R5 || !box.additionalRegisters.R6) {
+                console.warn(`Caja ${box.boxId} omitida por falta de registros R4, R5 o R6.`);
+                continue;
+            }
+
+            const type_nft_id_for_box = box.additionalRegisters.R4.renderedValue ?? "";
+            
+            // TODO: Idealmente, aquí se buscaría la metadata del TypeNFT
+            // Por ahora, usamos un placeholder.
+            let typeNftForBox: TypeNFT = { 
+                tokenId: type_nft_id_for_box, 
+                boxId: '', 
+                typeName: "Unknown Type", 
+                description: "...", 
+                schemaURI: "", 
+                isRepProof: false 
+            };
+            if (type_nft_id_for_box === PROFILE_TYPE_NFT_ID) {
+                typeNftForBox.typeName = "Profile";
+            }
+
+            // Extraer contenido de R9
+            let box_content: string|object|null = null;
+            try {
+                const rawValue = box.additionalRegisters.R9?.renderedValue;
+                if (rawValue) {
+                    const potentialString = hexToUtf8(rawValue);
+                    try {
+                        // Intentar parsear como JSON (para el perfil)
+                        box_content = JSON.parse(potentialString ?? "");
+                    } catch (jsonError) {
+                        // Si falla, tratarlo como texto plano (para comentarios)
+                        box_content = potentialString;
+                    }
+                }
+            } catch (error) {
+                box_content = null;
+            }
+
+            // Extraer puntero de R5
+            const object_pointer_for_box = hexToUtf8(box.additionalRegisters.R5?.renderedValue ?? "") ?? "";
+
+            // Construir el objeto RPBox
+            const current_box: RPBox = {
+                box: {
+                    boxId: box.boxId, value: box.value, assets: box.assets, ergoTree: box.ergoTree, creationHeight: box.creationHeight,
+                    // Convertir registros a formato serializado simple
+                    additionalRegisters: Object.entries(box.additionalRegisters).reduce((acc, [key, value]) => { acc[key] = value.serializedValue; return acc; }, {} as { [key: string]: string; }),
+                    index: box.index, transactionId: box.transactionId
+                },
+                box_id: box.boxId,
+                type: typeNftForBox,
+                token_id: profileTokenId,
+                token_amount: Number(box.assets[0].amount),
+                object_pointer: object_pointer_for_box,
+                is_locked: box.additionalRegisters.R6.renderedValue === 'true',
+                polarization: box.additionalRegisters.R8?.renderedValue === 'true',
+                content: box_content,
+            };
+
+            // 8. Si esta es la caja de perfil principal (apunta a sí misma), actualizar el 'proof'
+            if (current_box.object_pointer === proof.token_id && type_nft_id_for_box === PROFILE_TYPE_NFT_ID) {
+                proof.type = typeNftForBox;
+                proof.data = box_content; // El R9 de la caja de perfil
+            }
+
+            proof.current_boxes.push(current_box);
+            proof.number_of_boxes += 1;
+        }
+
+        console.log(`Perfil encontrado: ${proof.token_id}, ${proof.number_of_boxes} cajas.`, proof);
+        
+        reputation_proof.set(proof);
+
+    } catch (error) {
+        console.error('Ocurrió un error durante la búsqueda del perfil:', error);
+        reputation_proof.set(null);
+    }
 }

@@ -15,8 +15,10 @@
         replyToComment,
         flagSpam
     } from '$lib/ergo/commentStore';
-    import { address, connected, balance, network } from "$lib/ergo/store";
+    import { address, connected, balance, network, reputation_proof } from "$lib/ergo/store";
     import { explorer_uri } from '$lib/ergo/envs';
+    import { get } from 'svelte/store';
+    import { fetchProfile } from '$lib/ergo/commentFetch';
 
     // --- Lógica del Componente de Chat ---
     
@@ -188,6 +190,8 @@
         } */
         
         await connectWallet();
+
+        await fetchProfile(ergo);
         
         balanceUpdateInterval = setInterval(updateWalletInfo, 30000);
         
@@ -249,6 +253,16 @@
             </div>
             
             <h1 class="text-3xl font-bold mb-6">Comentarios del Proyecto</h1>
+
+            {#if get(reputation_proof) !== null}
+                <div class="mb-6 p-4 bg-green-100 dark:bg-green-900 border border-green-400 rounded-md text-green-800 dark:text-green-200">
+                    Your profile id: {get(reputation_proof)?.token_id}.
+                </div>
+            {:else}
+                <div class="mb-6 p-4 bg-yellow-100 dark:bg-yellow-900 border border-yellow-400 rounded-md text-yellow-800 dark:text-yellow-200">
+                    You don't have a reputation profile yet. Participate in the community to earn one!
+                </div>
+            {/if}
 
             <form on:submit|preventDefault={handlePostComment} class="space-y-4 mb-8">
                 <div>
