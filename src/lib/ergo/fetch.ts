@@ -187,7 +187,7 @@ export async function updateReputationProofList(
                         box_content = {};
                     }
                     
-                    const object_pointer_for_box = hexToUtf8(box.additionalRegisters.R5?.renderedValue ?? "") ?? "";
+                    const object_pointer_for_box = box.additionalRegisters.R5?.renderedValue ?? "";
 
                     const current_box: RPBox = {
                         box: {
@@ -388,7 +388,7 @@ export async function fetchProfile(ergo: any) {
             }
 
             // Extraer puntero de R5
-            const object_pointer_for_box = hexToUtf8(box.additionalRegisters.R5?.renderedValue ?? "") ?? "";
+            const object_pointer_for_box = box.additionalRegisters.R5?.renderedValue ?? "";
 
             // Construir el objeto RPBox
             const current_box: RPBox = {
