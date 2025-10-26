@@ -34,8 +34,8 @@
     
     // Proyectos simulados
     const projects = [
-        { id: "project_a", name: "Proyecto Alpha" },
-        { id: "project_b", name: "Proyecto Beta" }
+        { id: "716f6e863f744b9ac22c97ec7b76ea5f5908bc5b2f67c61510bfc4751384ea7a", name: "Proyecto Alpha" },
+        { id: "c94a63ec4e9ae8700c671a908bd2121d4c049cec75a40f1309e09ab59d0bbc71", name: "Proyecto Beta" }
     ];
 
     // Estado local para los formularios

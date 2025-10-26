@@ -163,7 +163,7 @@ async function flagSpamAPI(targetCommentId: string): Promise<{ targetCommentId: 
 export const threads = writable<Comment[]>([]); // Tipado con Comment[]
 export const isLoading = writable<boolean>(true);
 export const error = writable<string | null>(null);
-export const currentProjectId = writable<string>("project_a");
+export const currentProjectId = writable<string>("716f6e863f744b9ac22c97ec7b76ea5f5908bc5b2f67c61510bfc4751384ea7a");
 
 export async function loadThreads() {
     isLoading.set(true);
