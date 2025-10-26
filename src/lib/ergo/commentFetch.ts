@@ -212,15 +212,20 @@ async function fetchProfileUserBoxes(r7SerializedHex: string): Promise<ApiBox[]>
         continue;
       }
 
-      const filteredBoxes = jsonData.items.sort((a: ApiBox, b: ApiBox) => b.creationHeight - a.creationHeight);
+      const filteredBoxes = jsonData.items
+        // .filter((box: ApiBox) => box.additionalRegisters.R5.serializedValue === box.assets[0].tokenId)
+        .sort((a: ApiBox, b: ApiBox) => b.creationHeight - a.creationHeight);
+
       allBoxes.push(...filteredBoxes as ApiBox[]);
       offset += LIMIT_PER_PAGE;
-      
     } catch (e) {
       console.error("fetchAllUserBoxes: Error during fetch", e);
       moreDataAvailable = false;
     }
   }
+
+  console.log(allBoxes.map(box => box.additionalRegisters))
+  console.log(allBoxes.map(box => box.boxId))
 
   return allBoxes;
 }
