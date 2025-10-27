@@ -20,6 +20,7 @@
     import { explorer_uri } from '$lib/ergo/envs';
     import { fetchProfile } from '$lib/ergo/commentFetch';
     import { type ReputationProof } from '$lib/ergo/object';
+    import { type Comment } from "$lib/ergo/commentObject";
 
     // --- Lógica del Componente de Chat ---
     
@@ -28,7 +29,7 @@
      * Si 'comment' es 'null', este componente actúa como el contenedor raíz.
      * Si 'comment' es un objeto, renderiza ese comentario y sus respuestas.
      */
-    export let comment: any | null = null;
+    export let comment: Comment | null = null;
 
     let profile: ReputationProof | null = null;
     
@@ -82,7 +83,7 @@
         isReplying = true;
         commentError = null;
         try {
-            await replyToComment(comment.tokenId, replyText); // <-- Llama al store
+            await replyToComment(comment.id, replyText); // <-- Llama al store
             replyText = "";
             showReplyForm = false;
         } catch (err: any) {
@@ -95,7 +96,7 @@
     async function handleFlag() {
         if (!comment) return;
         isFlagging = true;
-        await flagSpam(comment.tokenId); // <-- Llama al store
+        await flagSpam(comment.id); // <-- Llama al store
         isFlagging = false;
     }
 
@@ -327,10 +328,16 @@
 {:else}
     <div class="comment-container border rounded-md p-4 bg-card">
         <div class="flex justify-between items-center mb-2">
-            <span class="font-semibold text-sm">@{comment.authorKey}</span>
-            <span class="text-xs text-muted-foreground">
-                {new Date(comment.timestamp).toLocaleString()}
-            </span>
+            <span class="font-semibold text-sm">@{comment.authorProfileTokenId.slice(0, 6)}</span>
+            {#if comment.submitting}
+                <span class="text-xs text-muted-foreground">
+                    Publicando...
+                </span>
+            {:else}
+                <span class="text-xs text-muted-foreground">
+                    {new Date(comment.timestamp).toLocaleString()}
+                </span>
+            {/if}
         </div>
         
         <p class="text-base mb-3">{comment.text}</p>

@@ -1,7 +1,7 @@
 import { ErgoAddress, Network, SByte, SColl } from '@fleet-sdk/core';
 import { type Comment } from './commentObject';
 import { hexToBytes, hexToUtf8, serializedToRendered } from './utils'; 
-import { DISCUSSION_TYPE_NFT_ID, explorer_uri, PROFILE_TYPE_NFT_ID } from './envs';
+import { COMMENT_TYPE_NFT_ID, DISCUSSION_TYPE_NFT_ID, explorer_uri, PROFILE_TYPE_NFT_ID } from './envs';
 import { ergo_tree_hash } from './contract';
 import { type TypeNFT, type ReputationProof, type RPBox } from './object';
 import { reputation_proof } from './store';
@@ -72,8 +72,8 @@ export async function getTimestampFromBlockId(blockId: string): Promise<number> 
  * Busca en la blockchain todos los comentarios de nivel superior (hilos)
  * para una 'discussion' (proyecto) específica.
  */
-export async function fetchComments(discussion: string): Promise<Comment[]> {
-    console.log("fetchComments", { discussion })
+export async function fetchComments(discussion: string, reply: boolean = false): Promise<Comment[]> {
+    console.log("fetchComments", { discussion }, reply)
     var comments: Comment[] = [];
 
     // Cuerpo de la búsqueda:
@@ -81,7 +81,7 @@ export async function fetchComments(discussion: string): Promise<Comment[]> {
     // R5 = ID de la Discusión (projectId)
     const search_body = {
         registers: { 
-            "R4": serializedToRendered(SColl(SByte, hexToBytes(DISCUSSION_TYPE_NFT_ID) ?? "").toHex()),
+            "R4": serializedToRendered(SColl(SByte, hexToBytes(reply ? COMMENT_TYPE_NFT_ID : DISCUSSION_TYPE_NFT_ID) ?? "").toHex()),
             "R5": serializedToRendered(SColl(SByte, hexToBytes(discussion) ?? "").toHex())
         }
     }
@@ -154,7 +154,7 @@ export async function fetchComments(discussion: string): Promise<Comment[]> {
                     text: textContent,
                     timestamp: await getTimestampFromBlockId(box.blockId), // Usamos el timestamp de la API
                     isSpam: false, // Por defecto, no es spam (requiere otra lógica para verificar)
-                    replies: [],    // Las respuestas deben cargarse por separado
+                    replies: await fetchComments(box.boxId, true),   // Las respuestas deben cargarse por separado
                     submitting: false
                 };
 
