@@ -9,7 +9,7 @@ import {
 } from '@fleet-sdk/core';
 import { SColl, SByte, SBool } from '@fleet-sdk/serializer';
 import { type RPBox } from '$lib/ergo/object';
-import { explorer_uri } from './envs';
+import { explorer_uri, PROFILE_TYPE_NFT_ID } from './envs';
 import { hexToBytes } from './utils';
 import { ergo_tree_address } from './contract';
 import { stringToBytes } from '@scure/base';
@@ -56,7 +56,7 @@ export async function generate_reputation_proof(
     const creatorP2PKAddress = ErgoAddress.fromBase58(creatorAddressString);
 
     // Fetch the Type NFT box to be used in dataInputs. This is required by the contract.
-    const typeNftBoxResponse = await fetch(`${explorer_uri}/api/v1/boxes/byTokenId/${type_nft_id}`);
+    const typeNftBoxResponse = await fetch(`${explorer_uri}/api/v1/boxes/byTokenId/${PROFILE_TYPE_NFT_ID}`);
     if (!typeNftBoxResponse.ok) {
       alert("Could not fetch the Type NFT box. Aborting transaction.");
       return null;
@@ -117,14 +117,18 @@ export async function generate_reputation_proof(
 
     const raw_content = typeof(content) === "object" ? JSON.stringify(content): content ?? "";
 
-    new_proof_output.setAdditionalRegisters({
+    const new_registers = {
         R4: SColl(SByte, hexToBytes(type_nft_id) ?? "").toHex(),
         R5: SColl(SByte, hexToBytes(object_pointer) ?? "").toHex(),
         R6: SBool(is_locked).toHex(),
         R7: SColl(SByte, propositionBytes).toHex(),
         R8: SBool(polarization).toHex(),
         R9: SColl(SByte, stringToBytes("utf8", raw_content)).toHex(),
-    });
+    };
+
+    console.log("New registers:", new_registers)
+
+    new_proof_output.setAdditionalRegisters(new_registers);
 
     outputs.push(new_proof_output);
 

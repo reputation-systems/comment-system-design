@@ -213,7 +213,10 @@ async function fetchProfileUserBoxes(r7SerializedHex: string): Promise<ApiBox[]>
       }
 
       const filteredBoxes = jsonData.items
-        .filter((box: ApiBox) => box.additionalRegisters.R5.renderedValue === box.assets[0].tokenId)
+        .filter((box: ApiBox) => 
+            box.additionalRegisters.R5.renderedValue === box.assets[0].tokenId &&  // Self
+            box.additionalRegisters.R6.renderedValue === 'false'  // Is not locked.
+          )
         .sort((a: ApiBox, b: ApiBox) => b.creationHeight - a.creationHeight);
 
       allBoxes.push(...filteredBoxes as ApiBox[]);
