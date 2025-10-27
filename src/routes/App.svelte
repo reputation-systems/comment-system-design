@@ -305,7 +305,7 @@
                 <p class="text-muted-foreground text-center py-4">No hay comentarios aún. ¡Sé el primero!</p>
             {:else}
                 <div class="space-y-6">
-                    {#each $threads as thread (thread.tokenId)}
+                    {#each $threads as thread (thread.id)}
                         <svelte:self comment={thread} />
                     {/each}
                 </div>

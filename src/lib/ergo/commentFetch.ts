@@ -1,7 +1,7 @@
 import { ErgoAddress, Network, SByte, SColl } from '@fleet-sdk/core';
 import { type Comment } from './commentObject';
 import { hexToBytes, hexToUtf8, serializedToRendered } from './utils'; 
-import { explorer_uri, PROFILE_TYPE_NFT_ID } from './envs';
+import { DISCUSSION_TYPE_NFT_ID, explorer_uri, PROFILE_TYPE_NFT_ID } from './envs';
 import { ergo_tree_hash } from './contract';
 import { type TypeNFT, type ReputationProof, type RPBox } from './object';
 import { reputation_proof } from './store';
@@ -13,7 +13,7 @@ interface ApiBox {
     ergoTree: string;
     assets: { tokenId: string; amount: string | number; }[];
     creationHeight: number;
-    timestamp: number; // Marca de tiempo del bloque de creación (en milisegundos)
+    blockId: string;
     additionalRegisters: {
         [key: string]: {
             serializedValue: string;
@@ -33,22 +33,56 @@ interface SearchBody {
 }
 
 /**
+ * Obtiene el timestamp del bloque según su altura en la blockchain.
+ * @param height Altura del bloque
+ * @returns Timestamp del bloque (en milisegundos)
+ */
+export async function getTimestampFromBlockId(blockId: string): Promise<number> {
+    const url = `${explorer_uri}/api/v1/blocks/${blockId}`;
+
+    try {
+        const response = await fetch(url, { method: "GET" });
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const json = await response.json();
+
+        console.log("get Timestamp ", json);
+
+        // Validar que el timestamp exista
+        const timestamp = json?.block?.header?.timestamp;
+        if (typeof timestamp !== "number") {
+            console.warn(`No se encontró timestamp para el bloque ${blockId}`);
+            return 0;
+        }
+
+        // La mayoría de APIs devuelven timestamp en milisegundos o segundos.
+        // Si ves timestamps como "1.7e12", ya está en milisegundos.
+        // Si ves algo como "1.7e9", conviértelo a milisegundos:
+        return timestamp < 1e11 ? timestamp * 1000 : timestamp;
+
+    } catch (error) {
+        console.error(`Error al obtener timestamp del bloque ${blockId}:`, error);
+        return 0; // Devolver 0 para evitar que falle la lógica principal
+    }
+}
+
+/**
  * Busca en la blockchain todos los comentarios de nivel superior (hilos)
  * para una 'discussion' (proyecto) específica.
  */
 export async function fetchComments(discussion: string): Promise<Comment[]> {
+    console.log("fetchComments", { discussion })
     var comments: Comment[] = [];
-
-    // ID del "Discussion Type NFT" que define un comentario de hilo principal
-    const discussionTypeNftId = "273f60541e8869216ee6aed5552e522d9bea29a69d88e567d089dc834da227cf";
 
     // Cuerpo de la búsqueda:
     // R4 = ID del Tipo (Discussion Type NFT)
     // R5 = ID de la Discusión (projectId)
     const search_body = {
         registers: { 
-            "R4": SColl(SByte, hexToBytes(discussionTypeNftId) ?? "").toHex(),
-            "R5": SColl(SByte, new TextEncoder().encode(discussion)).toHex()
+            "R4": serializedToRendered(SColl(SByte, hexToBytes(DISCUSSION_TYPE_NFT_ID) ?? "").toHex()),
+            "R5": serializedToRendered(SColl(SByte, hexToBytes(discussion) ?? "").toHex())
         }
     }
 
@@ -83,21 +117,18 @@ export async function fetchComments(discussion: string): Promise<Comment[]> {
                 continue;
             }
 
+            console.log("Comments json data ", json_data.items)
+
             for (const box of json_data.items as ApiBox[]) {
                 
                 // --- Validación de la caja como Comentario Válido ---
                 
-                // 1. Debe tener assets (el token de reputación del autor)
+                // Debe tener assets (el token de reputación del autor)
                 if (!box.assets?.length) continue;
                 
-                // 2. Debe tener R6 (is_locked) y R9 (contenido)
-                if (!box.additionalRegisters.R6 || !box.additionalRegisters.R9) continue;
+                // Debe tener R6 (is_locked) y R9 (contenido)
+                if (box.additionalRegisters.R6.renderedValue == "false" || !box.additionalRegisters.R9.renderedValue) continue;
 
-                // 3. Un comentario válido DEBE estar bloqueado (is_locked = true)
-                if (box.additionalRegisters.R6.renderedValue !== 'true') continue;
-
-                // 4. Debe tener una marca de tiempo
-                if (!box.timestamp) continue;
 
                 // --- Extracción de Datos ---
                 
@@ -121,9 +152,10 @@ export async function fetchComments(discussion: string): Promise<Comment[]> {
                     discussion: discussion,
                     authorProfileTokenId: authorProfileTokenId,
                     text: textContent,
-                    timestamp: box.timestamp, // Usamos el timestamp de la API
+                    timestamp: await getTimestampFromBlockId(box.blockId), // Usamos el timestamp de la API
                     isSpam: false, // Por defecto, no es spam (requiere otra lógica para verificar)
-                    replies: []    // Las respuestas deben cargarse por separado
+                    replies: [],    // Las respuestas deben cargarse por separado
+                    submitting: false
                 };
 
                 comments.push(comment);

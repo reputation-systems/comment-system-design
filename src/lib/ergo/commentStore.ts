@@ -86,8 +86,6 @@ async function postCommentAPI(projectId: string, text: string): Promise<Comment>
     if (!tx) throw new Error("La transacción de comentario falló.");
     console.log("Transacción de comentario enviada, ID:", tx);
 
-    // 4. Simular el nuevo comentario
-    // En la vida real, 'id' sería el box_id de la *nueva* caja creada por 'tx'
     const newComment: Comment = {
         id: `sim_box_${Math.random().toString(36).substring(2, 10)}`,
         discussion: projectId,
@@ -95,7 +93,8 @@ async function postCommentAPI(projectId: string, text: string): Promise<Comment>
         text: text,
         timestamp: Date.now(),
         replies: [],
-        isSpam: false
+        isSpam: false,
+        submitting: true
     };
     return newComment;
 }
@@ -129,7 +128,8 @@ async function replyToCommentAPI(parentCommentId: string, projectId: string, tex
         text: text,
         timestamp: Date.now(),
         replies: [],
-        isSpam: false
+        isSpam: false,
+        submitting: true
     };
     return newReply;
 }
@@ -173,7 +173,7 @@ export async function loadThreads() {
 
     try {
         const data = await fetchThreadsAPI(projectId);
-        data.sort((a, b) => b.timestamp - a.timestamp);
+        data.sort((a, b) => a.timestamp - b.timestamp);
         threads.set(data);
     } catch (err: any) {
         error.set(err.message || "Error al cargar los comentarios.");

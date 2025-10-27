@@ -6,4 +6,5 @@ export interface Comment {
     timestamp: number;  // Timestamp of the height of the box.
     isSpam: boolean;
     replies: Comment[];
+    submitting: boolean;
 }
