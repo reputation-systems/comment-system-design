@@ -6,7 +6,7 @@ import { ergo_tree_hash } from './contract';
 import { type TypeNFT, type ReputationProof, type RPBox } from './object';
 import { reputation_proof } from './store';
 
-// Definición mínima de la respuesta de la API de Explorer para una caja
+// Minimal definition of the Explorer API response for a box
 interface ApiBox {
     boxId: string;
     value: string | number;
@@ -33,9 +33,9 @@ interface SearchBody {
 }
 
 /**
- * Obtiene el timestamp del bloque según su altura en la blockchain.
- * @param height Altura del bloque
- * @returns Timestamp del bloque (en milisegundos)
+ * Gets the timestamp of a block given its block ID.
+ * @param blockId The ID of the block.
+ * @returns The block timestamp (in milliseconds).
  */
 export async function getTimestampFromBlockId(blockId: string): Promise<number> {
     const url = `${explorer_uri}/api/v1/blocks/${blockId}`;
@@ -47,32 +47,29 @@ export async function getTimestampFromBlockId(blockId: string): Promise<number> 
         }
 
         const json = await response.json();
-
         console.log("get Timestamp ", json);
 
-        // Validar que el timestamp exista
         const timestamp = json?.block?.header?.timestamp;
         if (typeof timestamp !== "number") {
-            console.warn(`No se encontró timestamp para el bloque ${blockId}`);
+            console.warn(`No timestamp found for block ${blockId}`);
             return 0;
         }
 
-        // La mayoría de APIs devuelven timestamp en milisegundos o segundos.
-        // Si ves timestamps como "1.7e12", ya está en milisegundos.
-        // Si ves algo como "1.7e9", conviértelo a milisegundos:
+        // Most APIs return timestamps in ms or s.
+        // If it's around 1e12, it's already in ms; if around 1e9, convert to ms.
         return timestamp < 1e11 ? timestamp * 1000 : timestamp;
 
     } catch (error) {
-        console.error(`Error al obtener timestamp del bloque ${blockId}:`, error);
-        return 0; // Devolver 0 para evitar que falle la lógica principal
+        console.error(`Error fetching timestamp for block ${blockId}:`, error);
+        return 0;
     }
 }
 
 /**
- * Busca en la blockchain todas las alertas de spam hacia un comentario.
+ * Searches the blockchain for all spam alerts targeting a comment.
  */
 export async function fetchSpan(comment_id: string): Promise<number> {
-    var amount: number = 0;
+    let amount: number = 0;
 
     const search_body = {
         registers: { 
@@ -87,11 +84,10 @@ export async function fetchSpan(comment_id: string): Promise<number> {
         while (moreDataAvailable) {
             const url = `${explorer_uri}/api/v1/boxes/unspent/search?offset=${offset}&limit=${limit}`;
             
-            // Buscamos cajas que coincidan con el hash del template Y los registros
             const final_body = { 
                 "ergoTreeTemplateHash": ergo_tree_hash, 
                 "registers": search_body.registers,
-                "assets": [] // No necesitamos filtrar por assets, solo asegurarnos de que existan
+                "assets": []
             };
             
             const response = await fetch(url, { 
@@ -101,7 +97,7 @@ export async function fetchSpan(comment_id: string): Promise<number> {
             });
 
             if (!response.ok) {
-                console.error(`Error al buscar spans: ${response.statusText}`);
+                console.error(`Error fetching spam reports: ${response.statusText}`);
                 moreDataAvailable = false;
                 continue;
             }
@@ -113,29 +109,17 @@ export async function fetchSpan(comment_id: string): Promise<number> {
             }
 
             for (const box of json_data.items as ApiBox[]) {
-                
                 if (!box.assets?.length) continue;
-                
-                // Debe tener R6 (is_locked) y R9 (contenido)
                 if (box.additionalRegisters.R6.renderedValue == "false" || !box.additionalRegisters.R9.renderedValue) continue;
 
-
-                // --- Extracción de Datos ---
-                
-                const authorProfileTokenId = box.assets[0].tokenId;
-                
-                let textContent: string = "";
                 try {
-                    // R9 contiene el texto del spam como una cadena UTF-8
                     const rawValue = box.additionalRegisters.R9.renderedValue;
-                    if (rawValue) {
-                        textContent = hexToUtf8(rawValue) ?? "[Contenido vacío]";
-                    }
+                    if (rawValue) hexToUtf8(rawValue);
                 } catch (e) {
-                    console.warn(`Error al decodificar R9 para la caja ${box.boxId}`, e);
+                    console.warn(`Error decoding R9 for box ${box.boxId}`, e);
                 }
                 
-                amount += 1;  // TODO Could add textContent into a spam_reasons: string[] comment attr.
+                amount += 1;
             }
             offset += limit;
         }
@@ -143,22 +127,19 @@ export async function fetchSpan(comment_id: string): Promise<number> {
         return amount;
 
     } catch (error) {
-        console.error('Ocurrió un error durante la búsqueda de comentarios:', error);
-        return 0; // Devolver 0 en caso de error
+        console.error('Error while searching spam flags:', error);
+        return 0;
     }
 }
 
 /**
- * Busca en la blockchain todos los comentarios de nivel superior (hilos)
- * para una 'discussion' (proyecto) específica.
+ * Searches the blockchain for all top-level comments (threads)
+ * for a given discussion (project).
  */
 export async function fetchComments(discussion: string, reply: boolean = false): Promise<Comment[]> {
     console.log("fetchComments", { discussion }, reply)
-    var comments: Comment[] = [];
+    let comments: Comment[] = [];
 
-    // Cuerpo de la búsqueda:
-    // R4 = ID del Tipo (Discussion Type NFT)
-    // R5 = ID de la Discusión (projectId)
     const search_body = {
         registers: { 
             "R4": serializedToRendered(SColl(SByte, hexToBytes(reply ? COMMENT_TYPE_NFT_ID : DISCUSSION_TYPE_NFT_ID) ?? "").toHex()),
@@ -172,11 +153,10 @@ export async function fetchComments(discussion: string, reply: boolean = false):
         while (moreDataAvailable) {
             const url = `${explorer_uri}/api/v1/boxes/unspent/search?offset=${offset}&limit=${limit}`;
             
-            // Buscamos cajas que coincidan con el hash del template Y los registros
             const final_body = { 
                 "ergoTreeTemplateHash": ergo_tree_hash, 
                 "registers": search_body.registers,
-                "assets": [] // No necesitamos filtrar por assets, solo asegurarnos de que existan
+                "assets": []
             };
             
             const response = await fetch(url, { 
@@ -186,7 +166,7 @@ export async function fetchComments(discussion: string, reply: boolean = false):
             });
 
             if (!response.ok) {
-                console.error(`Error al buscar comentarios: ${response.statusText}`);
+                console.error(`Error fetching comments: ${response.statusText}`);
                 moreDataAvailable = false;
                 continue;
             }
@@ -200,33 +180,21 @@ export async function fetchComments(discussion: string, reply: boolean = false):
             console.log("Comments json data ", json_data.items)
 
             for (const box of json_data.items as ApiBox[]) {
-                
-                // --- Validación de la caja como Comentario Válido ---
-                
-                // Debe tener assets (el token de reputación del autor)
                 if (!box.assets?.length) continue;
-                
-                // Debe tener R6 (is_locked) y R9 (contenido)
                 if (box.additionalRegisters.R6.renderedValue == "false" || !box.additionalRegisters.R9.renderedValue) continue;
 
-
-                // --- Extracción de Datos ---
-                
                 const authorProfileTokenId = box.assets[0].tokenId;
                 
-                let textContent: string = "[Contenido no legible]";
+                let textContent: string = "[Unreadable content]";
                 try {
-                    // R9 contiene el texto del comentario como una cadena UTF-8
                     const rawValue = box.additionalRegisters.R9.renderedValue;
                     if (rawValue) {
-                        textContent = hexToUtf8(rawValue) ?? "[Contenido vacío]";
+                        textContent = hexToUtf8(rawValue) ?? "[Empty content]";
                     }
                 } catch (e) {
-                    console.warn(`Error al decodificar R9 para la caja ${box.boxId}`, e);
+                    console.warn(`Error decoding R9 for box ${box.boxId}`, e);
                 }
 
-                // --- Construcción del Objeto Comment ---
-                
                 const number_of_spans = await fetchSpan(box.boxId);
                 const isSpam = number_of_spans > SPAM_LIMIT;
 
@@ -235,9 +203,9 @@ export async function fetchComments(discussion: string, reply: boolean = false):
                     discussion: discussion,
                     authorProfileTokenId: authorProfileTokenId,
                     text: textContent,
-                    timestamp: await getTimestampFromBlockId(box.blockId), // Usamos el timestamp de la API
+                    timestamp: await getTimestampFromBlockId(box.blockId),
                     isSpam: isSpam,
-                    replies: await fetchComments(box.boxId, true),   // Las respuestas deben cargarse por separado
+                    replies: await fetchComments(box.boxId, true),
                     submitting_tx: null,
                     sentiment: box.additionalRegisters.R8?.renderedValue === 'true',
                 };
@@ -247,18 +215,17 @@ export async function fetchComments(discussion: string, reply: boolean = false):
             offset += limit;
         }
 
-        // Ordenar los comentarios del más nuevo al más viejo
         comments.sort((a, b) => b.timestamp - a.timestamp);
 
         return comments;
 
     } catch (error) {
-        console.error('Ocurrió un error durante la búsqueda de comentarios:', error);
-        return []; // Devolver un array vacío en caso de error
+        console.error('Error while fetching comments:', error);
+        return [];
     }
 }
 
-// Helper function to get serialized R7
+// Helper to get serialized R7
 async function getSerializedR7(ergo: any): Promise<{ changeAddress: string; r7SerializedHex: string } | null> {
   if (!ergo) {
     console.error("getSerializedR7: 'ergo' object is not available.");
@@ -299,7 +266,7 @@ async function fetchProfileUserBoxes(r7SerializedHex: string): Promise<ApiBox[]>
   const searchBody: SearchBody = { registers: {
     R7: serializedToRendered(r7SerializedHex),
     R4: PROFILE_TYPE_NFT_ID
-  } }; // Adjust if R7 is needed
+  } };
 
   while (moreDataAvailable) {
     const url = `${explorer_uri}/api/v1/boxes/unspent/search?offset=${offset}&limit=${LIMIT_PER_PAGE}`;
@@ -330,8 +297,8 @@ async function fetchProfileUserBoxes(r7SerializedHex: string): Promise<ApiBox[]>
 
       const filteredBoxes = jsonData.items
         .filter((box: ApiBox) => 
-            box.additionalRegisters.R5.renderedValue === box.assets[0].tokenId &&  // Self
-            box.additionalRegisters.R6.renderedValue === 'false'  // Is not locked.
+            box.additionalRegisters.R5.renderedValue === box.assets[0].tokenId &&  
+            box.additionalRegisters.R6.renderedValue === 'false'
           )
         .sort((a: ApiBox, b: ApiBox) => b.creationHeight - a.creationHeight);
 
@@ -430,13 +397,12 @@ function convertToRPBox(box: ApiBox, profileTokenId: string): RPBox | null {
 }
 
 /**
- * Obtiene el objeto ReputationProof completo del usuario conectado,
- * buscando todas las cajas donde R7 coincida con su dirección.
- * @param ergo El objeto de la billetera conectada (ej. dApp Connector)
+ * Fetches the full ReputationProof object for the connected user,
+ * by searching all boxes where R7 matches their wallet address.
+ * @param ergo The connected wallet object (e.g., dApp Connector)
  */
 export async function fetchProfile(ergo: any): Promise<ReputationProof | null> {
   try {
-    // 1. Get serialized R7 and change address
     const r7Data = await getSerializedR7(ergo);
     if (!r7Data) {
       reputation_proof.set(null);
@@ -445,17 +411,10 @@ export async function fetchProfile(ergo: any): Promise<ReputationProof | null> {
     const { changeAddress, r7SerializedHex } = r7Data;
     console.log(`Fetching profile for R7: ${r7SerializedHex}`);
 
-    // 2. Fetch all user boxes
     const allUserBoxes = await fetchProfileUserBoxes(r7SerializedHex);
     if (allUserBoxes.length === 0) {
       console.log('No profile boxes found for this user.');
       reputation_proof.set(null);
-      return null;
-    }
-
-    if (allUserBoxes.length === 0) {
-      reputation_proof.set(null);
-      console.warn("No profile boxes found for this user.");
       return null;
     }
 
@@ -469,7 +428,6 @@ export async function fetchProfile(ergo: any): Promise<ReputationProof | null> {
       return null;
     }
 
-    // 4. Initialize ReputationProof
     const proof: ReputationProof = {
       token_id: profileTokenId,
       type: { tokenId: '', boxId: '', typeName: 'N/A', description: '...', schemaURI: '', isRepProof: false },
@@ -493,7 +451,7 @@ export async function fetchProfile(ergo: any): Promise<ReputationProof | null> {
     proof.current_boxes.push(rpbox);
     proof.number_of_boxes += 1;
 
-    console.log(`Perfil encontrado: ${proof.token_id}, ${proof.number_of_boxes} cajas.`, proof);
+    console.log(`Profile found: ${proof.token_id}, ${proof.number_of_boxes} boxes.`, proof);
     reputation_proof.set(proof);
 
     console.log(proof)
