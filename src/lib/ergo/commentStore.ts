@@ -9,7 +9,7 @@ import { type Comment } from './commentObject';
 import { fetchComments } from './commentFetch';
 import { COMMENT_TYPE_NFT_ID, DISCUSSION_TYPE_NFT_ID, PROFILE_TOTAL_SUPPLY, PROFILE_TYPE_NFT_ID, SPAM_FLAG_NFT_ID } from './envs';
 
-// --- API (Simulada) ---
+
 
 async function fetchThreadsAPI(projectId: string): Promise<Comment[]> {
     console.log("API: fetchThreads", { projectId });
@@ -65,7 +65,7 @@ export async function getOrCreateProfileBox(): Promise<RPBox> {
 
 // --- APIs Modificadas (sin authorKey, usando nueva interfaz Comment) ---
 
-async function postCommentAPI(projectId: string, text: string): Promise<Comment> {
+async function postCommentAPI(projectId: string, text: string, sentiment: boolean): Promise<Comment> {
     console.log("API: postComment", { projectId, text });
 
     // 1. Obtener la caja de perfil principal para gastar
@@ -77,7 +77,7 @@ async function postCommentAPI(projectId: string, text: string): Promise<Comment>
         PROFILE_TOTAL_SUPPLY,
         DISCUSSION_TYPE_NFT_ID,  // Ex: Discussion Type NFT ID
         projectId, // El 'target' de la prueba es el ID de la discusión/proyecto
-        true,  // Polarización (true/false)
+        sentiment,  // Polarización (true/false)
         text,  // Contenido del comentario
         true,  // LOcked,  si no lo está no sería valido
         inputProofBox  // Prueba de reputación (todas las cajas que poseen el token_id del perfil)
@@ -99,7 +99,7 @@ async function postCommentAPI(projectId: string, text: string): Promise<Comment>
     return newComment;
 }
 
-async function replyToCommentAPI(parentCommentId: string, projectId: string, text: string): Promise<Comment> {
+async function replyToCommentAPI(parentCommentId: string, projectId: string, text: string, sentiment: boolean): Promise<Comment> {
     console.log("API: replyToComment", { parentCommentId, projectId, text });
     
     // 1. Obtener la caja de perfil principal para gastar
@@ -111,7 +111,7 @@ async function replyToCommentAPI(parentCommentId: string, projectId: string, tex
         PROFILE_TOTAL_SUPPLY,
         COMMENT_TYPE_NFT_ID,  // Ex: Comment Type NFT ID
         parentCommentId, // El 'target' de la prueba es el 'id' (box_id) del comentario padre
-        true,
+        sentiment,
         text,
         true,
         inputProofBox
@@ -182,14 +182,14 @@ export async function loadThreads() {
     }
 }
 
-export async function postComment(text: string) {
+export async function postComment(text: string, sentiment: boolean) {
     console.log("Publicando comentario:", text);
     let projectId = '';
     currentProjectId.subscribe(id => projectId = id)();
 
     try {
         // 1. Llama a la API
-        const newComment = await postCommentAPI(projectId, text);
+        const newComment = await postCommentAPI(projectId, text, sentiment);
 
         // 2. Actualiza el store localmente
         threads.update(currentThreadList => {
@@ -245,7 +245,7 @@ function flagCommentAsSpam(threadsList: Comment[], targetId: string): Comment[] 
 }
 
 
-export async function replyToComment(parentCommentId: string, text: string) {
+export async function replyToComment(parentCommentId: string, text: string, sentiment: boolean) {
     console.log("Respondiendo a comentario:", parentCommentId, text);
     // Necesitamos el projectId para pasarlo a la API y que la respuesta
     // simulada tenga el campo 'discussion' correcto.
@@ -254,7 +254,7 @@ export async function replyToComment(parentCommentId: string, text: string) {
 
     try {
         // 1. Llama a la API (sin authorKey, con projectId)
-        const newReply = await replyToCommentAPI(parentCommentId, projectId, text);
+        const newReply = await replyToCommentAPI(parentCommentId, projectId, text, sentiment);
 
         // 2. Actualiza el store localmente
         threads.update(currentThreadList => {
