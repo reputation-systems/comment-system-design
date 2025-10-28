@@ -346,9 +346,13 @@
             <Button variant="ghost" size="sm" on:click={() => showReplyForm = !showReplyForm}>
                 {showReplyForm ? 'Cancelar' : 'Responder'}
             </Button>
+            {#if !comment.isSpam}
             <Button variant="ghost" size="sm" class="text-red-500" on:click={handleFlag} disabled={isFlagging}>
                 {isFlagging ? 'Marcando...' : 'Marcar Spam'}
             </Button>
+            {:else}
+                Spam
+            {/if}
         </div>
 
         {#if commentError}

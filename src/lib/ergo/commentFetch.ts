@@ -1,7 +1,7 @@
 import { ErgoAddress, Network, SByte, SColl } from '@fleet-sdk/core';
 import { type Comment } from './commentObject';
 import { hexToBytes, hexToUtf8, serializedToRendered } from './utils'; 
-import { COMMENT_TYPE_NFT_ID, DISCUSSION_TYPE_NFT_ID, explorer_uri, PROFILE_TYPE_NFT_ID } from './envs';
+import { COMMENT_TYPE_NFT_ID, DISCUSSION_TYPE_NFT_ID, explorer_uri, PROFILE_TYPE_NFT_ID, SPAM_FLAG_NFT_ID, SPAM_LIMIT } from './envs';
 import { ergo_tree_hash } from './contract';
 import { type TypeNFT, type ReputationProof, type RPBox } from './object';
 import { reputation_proof } from './store';
@@ -65,6 +65,86 @@ export async function getTimestampFromBlockId(blockId: string): Promise<number> 
     } catch (error) {
         console.error(`Error al obtener timestamp del bloque ${blockId}:`, error);
         return 0; // Devolver 0 para evitar que falle la lógica principal
+    }
+}
+
+/**
+ * Busca en la blockchain todas las alertas de spam hacia un comentario.
+ */
+export async function fetchSpan(comment_id: string): Promise<number> {
+    var amount: number = 0;
+
+    const search_body = {
+        registers: { 
+            "R4": serializedToRendered(SColl(SByte, hexToBytes(SPAM_FLAG_NFT_ID) ?? "").toHex()),
+            "R5": serializedToRendered(SColl(SByte, hexToBytes(comment_id) ?? "").toHex())
+        }
+    }
+
+    try {
+        let offset = 0, limit = 100, moreDataAvailable = true;
+        
+        while (moreDataAvailable) {
+            const url = `${explorer_uri}/api/v1/boxes/unspent/search?offset=${offset}&limit=${limit}`;
+            
+            // Buscamos cajas que coincidan con el hash del template Y los registros
+            const final_body = { 
+                "ergoTreeTemplateHash": ergo_tree_hash, 
+                "registers": search_body.registers,
+                "assets": [] // No necesitamos filtrar por assets, solo asegurarnos de que existan
+            };
+            
+            const response = await fetch(url, { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify(final_body) 
+            });
+
+            if (!response.ok) {
+                console.error(`Error al buscar spans: ${response.statusText}`);
+                moreDataAvailable = false;
+                continue;
+            }
+
+            const json_data = await response.json();
+            if (!json_data.items || json_data.items.length === 0) {
+                moreDataAvailable = false;
+                continue;
+            }
+
+            for (const box of json_data.items as ApiBox[]) {
+                
+                if (!box.assets?.length) continue;
+                
+                // Debe tener R6 (is_locked) y R9 (contenido)
+                if (box.additionalRegisters.R6.renderedValue == "false" || !box.additionalRegisters.R9.renderedValue) continue;
+
+
+                // --- Extracción de Datos ---
+                
+                const authorProfileTokenId = box.assets[0].tokenId;
+                
+                let textContent: string = "";
+                try {
+                    // R9 contiene el texto del spam como una cadena UTF-8
+                    const rawValue = box.additionalRegisters.R9.renderedValue;
+                    if (rawValue) {
+                        textContent = hexToUtf8(rawValue) ?? "[Contenido vacío]";
+                    }
+                } catch (e) {
+                    console.warn(`Error al decodificar R9 para la caja ${box.boxId}`, e);
+                }
+                
+                amount += 1;  // TODO Could add textContent into a spam_reasons: string[] comment attr.
+            }
+            offset += limit;
+        }
+
+        return amount;
+
+    } catch (error) {
+        console.error('Ocurrió un error durante la búsqueda de comentarios:', error);
+        return 0; // Devolver 0 en caso de error
     }
 }
 
@@ -147,13 +227,16 @@ export async function fetchComments(discussion: string, reply: boolean = false):
 
                 // --- Construcción del Objeto Comment ---
                 
+                const number_of_spans = await fetchSpan(box.boxId);
+                const isSpam = number_of_spans > SPAM_LIMIT;
+
                 const comment: Comment = {
                     id: box.boxId,
                     discussion: discussion,
                     authorProfileTokenId: authorProfileTokenId,
                     text: textContent,
                     timestamp: await getTimestampFromBlockId(box.blockId), // Usamos el timestamp de la API
-                    isSpam: false, // Por defecto, no es spam (requiere otra lógica para verificar)
+                    isSpam: isSpam,
                     replies: await fetchComments(box.boxId, true),   // Las respuestas deben cargarse por separado
                     submitting: false
                 };
