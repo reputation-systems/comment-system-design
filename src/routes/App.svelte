@@ -1,454 +1,404 @@
 <script lang="ts">
-    import { onMount } from 'svelte';
-    import { browser } from '$app/environment';
-    import Theme from './Theme.svelte';
-    import { Button } from "$lib/components/ui/button/index.js";
-    import { Textarea } from "$lib/components/ui/textarea";
-    import { Label } from "$lib/components/ui/label/index.js";
-    import {
-        threads,
-        isLoading,
-        error,
-        currentProjectId,
-        loadThreads,
-        postComment,
-        replyToComment,
-        flagSpam,
-        getOrCreateProfileBox
-    } from '$lib/ergo/commentStore';
-    import { address, connected, balance, network } from "$lib/ergo/store";
-    import { explorer_uri } from '$lib/ergo/envs';
-    import { fetchProfile } from '$lib/ergo/commentFetch';
-    import { type ReputationProof } from '$lib/ergo/object';
-    import { type Comment } from "$lib/ergo/commentObject";
+	import { onMount } from 'svelte';
+	import { browser } from '$app/environment';
+	import Theme from './Theme.svelte';
+	import { Button } from "$lib/components/ui/button/index.js";
+	import { Textarea } from "$lib/components/ui/textarea";
+	import { Label } from "$lib/components/ui/label/index.js";
+	import {
+		threads,
+		isLoading,
+		error,
+		currentProjectId as currentTopicId,
+		loadThreads,
+		postComment,
+		replyToComment,
+		flagSpam,
+		getOrCreateProfileBox
+	} from '$lib/ergo/commentStore';
+	import { address, connected, balance, network } from "$lib/ergo/store";
+	import { explorer_uri } from '$lib/ergo/envs';
+	import { fetchProfile } from '$lib/ergo/commentFetch';
+	import { type ReputationProof } from '$lib/ergo/object';
+	import { type Comment } from "$lib/ergo/commentObject";
+	import { User, ThumbsUp, ThumbsDown, X } from "lucide-svelte";
 
-    // --- Lógica del Componente de Chat ---
-    
-    /**
-     * Prop: 'comment'.
-     * Si 'comment' es 'null', este componente actúa como el contenedor raíz.
-     * Si 'comment' es un objeto, renderiza ese comentario y sus respuestas.
-     */
-    export let comment: Comment | null = null;
+	export let comment: Comment | null = null;
 
-    let profile: ReputationProof | null = null;
-    
-    // Proyectos simulados
-    const projects = [
-        { id: "716f6e863f744b9ac22c97ec7b76ea5f5908bc5b2f67c61510bfc4751384ea7a", name: "Proyecto Alpha" },
-        { id: "c94a63ec4e9ae8700c671a908bd2121d4c049cec75a40f1309e09ab59d0bbc71", name: "Proyecto Beta" }
-    ];
+	let profile: ReputationProof | null = null;
 
-    // Estado local para los formularios
-    let newCommentText = "";
-    let isPostingComment = false;
-    let replyText = "";
-    let isReplying = false;
-    let isFlagging = false;
-    let commentError: string | null = null;
-    let showReplyForm = false;
+	const topics = [
+		{ id: "716f6e863f744b9ac22c97ec7b76ea5f5908bc5b2f67c61510bfc4751384ea7a", name: "Topic Alpha" },
+		{ id: "c94a63ec4e9ae8700c671a908bd2121d4c049cec75a40f1309e09ab59d0bbc71", name: "Topic Beta" }
+	];
 
-        // --- Estado de la UI ---
-    let showWalletInfo = false;
-    let current_height: number | null = null;
-    let balanceUpdateInterval: number;
-    
-    // --- Lógica del Footer (Restaurada) ---
-    const footerMessages = [
-        "Este es un chat descentralizado. Se ejecuta localmente en tu navegador.",
-        "Tu identidad (clave) es tuya. Estás en control.",
-        "Desarrollado sobre Ergo, asegurando transparencia."
-    ];
-    let activeMessageIndex = 0;
-    let scrollingTextElement: HTMLElement;
+	let newCommentText = "";
+	let isPostingComment = false;
+	let replyText = "";
+	let isReplying = false;
+	let isFlagging = false;
+	let commentError: string | null = null;
+	let showReplyForm = false;
+	let sentiment: boolean | null = null;
+	let replySentiment: boolean | null = null;
 
-    function handleAnimationIteration() {
-        activeMessageIndex = (activeMessageIndex + 1) % footerMessages.length;
-    }
+	let showWalletInfo = false;
+	let current_height: number | null = null;
+	let balanceUpdateInterval: number;
 
-    // --- Manejadores de Eventos (usan el store) ---
+	// Footer text
+	const footerMessages = [
+		"This is a decentralized chat running in your browser.",
+		"Your identity (key) belongs to you. You're in control.",
+		"Powered by Ergo for transparency and integrity."
+	];
+	let activeMessageIndex = 0;
+	let scrollingTextElement: HTMLElement;
 
-    async function handlePostComment() {
-        if (!newCommentText.trim()) return;
-        
-        isPostingComment = true;
-        await postComment(newCommentText); // <-- Llama al store
-        newCommentText = ""; // Limpiar formulario
-        isPostingComment = false;
-    }
+	function handleAnimationIteration() {
+		activeMessageIndex = (activeMessageIndex + 1) % footerMessages.length;
+	}
 
-    async function handleReply() {
-        if (!replyText.trim() || !comment) return;
+	let showAllComments = false;
 
-        isReplying = true;
-        commentError = null;
-        try {
-            await replyToComment(comment.id, replyText); // <-- Llama al store
-            replyText = "";
-            showReplyForm = false;
-        } catch (err: any) {
-            commentError = err.message || "Error al enviar la respuesta.";
-        } finally {
-            isReplying = false;
-        }
-    }
+	async function handlePostComment() {
+		if (!newCommentText.trim() || sentiment === null) return;
+		isPostingComment = true;
+		await postComment(newCommentText, sentiment);
+		newCommentText = "";
+		sentiment = null;
+		isPostingComment = false;
+	}
 
-    async function handleFlag() {
-        if (!comment) return;
-        isFlagging = true;
-        await flagSpam(comment.id); // <-- Llama al store
-        isFlagging = false;
-    }
+	async function handleReply() {
+		if (!replyText.trim() || !comment || replySentiment === null) return;
 
-    async function handleCreateProfile() {
-        if (!profile) {
-            getOrCreateProfileBox();
-        }
-    }
-    
-    // Reacciona a cambios en el selector de proyecto
-    currentProjectId.subscribe((projectId) => {
-        if (browser && comment === null) { // Solo la raíz debe cargar hilos
-            loadThreads();
-        }
-    });
+		isReplying = true;
+		commentError = null;
+		try {
+			await replyToComment(comment.id, replyText, replySentiment);
+			replyText = "";
+			replySentiment = null;
+			showReplyForm = false;
+		} catch (err: any) {
+			commentError = err.message || "Error sending reply.";
+		} finally {
+			isReplying = false;
+		}
+	}
 
-    /* function checkKyaScroll(e: Event) {
-        const element = e.target as HTMLDivElement;
-        if (Math.abs(element.scrollHeight - element.clientHeight - element.scrollTop) < 5) {
-            isKyaButtonEnabled = true;
-        }
-    } */
+	async function handleFlag() {
+		if (!comment) return;
+		isFlagging = true;
+		await flagSpam(comment.id);
+		isFlagging = false;
+	}
 
-    async function get_current_height(): Promise<number> {
-        try {
-            return await ergo.get_current_height();
-        } catch {
-            try {
-                const response = await fetch(explorer_uri + '/api/v1/networkState');
-                if (!response.ok) throw new Error(`API request failed: ${response.status}`);
-                const data = await response.json();
-                return data.height;
-            } catch (error) {
-                console.error("Could not get network height from the API:", error);
-                throw new Error("Cannot get current height.");
-            }
-        }
-    }
+	async function handleCreateProfile() {
+		if (!profile) {
+			await getOrCreateProfileBox();
+			profile = await fetchProfile(ergo);
+			showProfileModal = false;
+		}
+	}
 
-    async function get_balance(id?: string): Promise<Map<string, number>> {
-        const balanceMap = new Map<string, number>();
-        const addr = await ergo.get_change_address();
-        if (!addr) throw new Error("An address is required to get the balance.");
+	currentTopicId.subscribe((topicId) => {
+		if (browser && comment === null) {
+			loadThreads();
+		}
+	});
 
-        try {
-            const response = await fetch(explorer_uri + `/api/v1/addresses/${addr}/balance/confirmed`);
-            if (!response.ok) throw new Error(`API request failed: ${response.status}`);
-            const data = await response.json();
-            balanceMap.set("ERG", data.nanoErgs);
-            balance.set(data.nanoErgs);
-            data.tokens.forEach((token: { tokenId: string; amount: number }) => {
-                balanceMap.set(token.tokenId, token.amount);
-            });
-        } catch (error) {
-            console.error(`Could not get balance for address ${addr}:`, error);
-            throw new Error("Cannot get balance.");
-        }
-        return balanceMap;
-    }
+	async function get_current_height(): Promise<number> {
+		try {
+			return await ergo.get_current_height();
+		} catch {
+			try {
+				const response = await fetch(explorer_uri + '/api/v1/networkState');
+				if (!response.ok) throw new Error(`API request failed: ${response.status}`);
+				const data = await response.json();
+				return data.height;
+			} catch (error) {
+				console.error("Could not get network height from API:", error);
+				throw new Error("Cannot get current height.");
+			}
+		}
+	}
 
-    /* function handleOpenKyaModal() {
-        showKyaModal = true;
-        isKyaButtonEnabled = false; 
-        setTimeout(() => {
-            if (kyaContentDiv && kyaContentDiv.scrollHeight <= kyaContentDiv.clientHeight) {
-                isKyaButtonEnabled = true;
-            }
-        }, 0);
-    }
+	async function get_balance(): Promise<Map<string, number>> {
+		const balanceMap = new Map<string, number>();
+		const addr = await ergo.get_change_address();
+		if (!addr) throw new Error("An address is required to get the balance.");
 
-    function handleCloseKyaModal() {
-        showKyaModal = false;
-        localStorage.setItem('acceptedTokenMinterKYA', 'true'); 
-    } */
+		const response = await fetch(explorer_uri + `/api/v1/addresses/${addr}/balance/confirmed`);
+		const data = await response.json();
+		balanceMap.set("ERG", data.nanoErgs);
+		balance.set(data.nanoErgs);
+		data.tokens.forEach((token: { tokenId: string; amount: number }) => {
+			balanceMap.set(token.tokenId, token.amount);
+		});
+		return balanceMap;
+	}
 
-    async function connectWallet() {
-        if (typeof ergoConnector !== 'undefined') {
-            const nautilus = ergoConnector.nautilus;
-            if (nautilus) {
-                if (await nautilus.connect()) {
-                    console.log('Connected!');
-                    address.set(await ergo.get_change_address());
-                    network.set("ergo-mainnet");
-                    await get_balance();
-                    connected.set(true);
-                } else {
-                    alert('Not connected');
-                }
-            } else {
-                alert('Nautilus wallet is not active');
-            }
-        }
-    }
+	async function connectWallet() {
+		if (typeof ergoConnector !== 'undefined') {
+			const nautilus = ergoConnector.nautilus;
+			if (nautilus && await nautilus.connect()) {
+				address.set(await ergo.get_change_address());
+				network.set("ergo-mainnet");
+				await get_balance();
+				connected.set(true);
+			} else {
+				alert('Wallet not connected or unavailable');
+			}
+		}
+	}
 
-    onMount(async () => {
-        if (!browser) return;
+	let showProfileModal = false;
 
-        /*const alreadyAccepted = localStorage.getItem('acceptedTokenMinterKYA') === 'true';
-        if (!alreadyAccepted) {
-            handleOpenKyaModal();
-        } */
-        
-        await connectWallet();
+	onMount(async () => {
+		if (!browser) return;
 
-        profile = await fetchProfile(ergo);
-        
-        balanceUpdateInterval = setInterval(updateWalletInfo, 30000);
-        
-        scrollingTextElement?.addEventListener('animationiteration', handleAnimationIteration);
+		await connectWallet();
+		profile = await fetchProfile(ergo);
 
-        return () => {
-            if (balanceUpdateInterval) clearInterval(balanceUpdateInterval);
-            scrollingTextElement?.removeEventListener('animationiteration', handleAnimationIteration);
-        }
-    });
+		balanceUpdateInterval = setInterval(updateWalletInfo, 30000);
+		scrollingTextElement?.addEventListener('animationiteration', handleAnimationIteration);
 
-    connected.subscribe(async (isConnected) => {
-        if (isConnected) {
-            await updateWalletInfo();
-        }
-    });
+		return () => {
+			if (balanceUpdateInterval) clearInterval(balanceUpdateInterval);
+			scrollingTextElement?.removeEventListener('animationiteration', handleAnimationIteration);
+		};
+	});
 
-    async function updateWalletInfo() {
-        if (typeof ergo === 'undefined' || !$connected) return;
-        try {
-            const walletBalance = await get_balance();
-            balance.set(walletBalance.get("ERG") || 0);
-            current_height = await get_current_height();
-        } catch (error) {
-            console.error("Error updating wallet information:", error);
-        }
-    }
+	connected.subscribe(async (isConnected) => {
+		if (isConnected) await updateWalletInfo();
+	});
 
-    $: ergInErgs = $balance ? (Number($balance) / 1_000_000_000).toFixed(4) : 0;
+	async function updateWalletInfo() {
+		if (typeof ergo === 'undefined' || !$connected) return;
+		try {
+			const walletBalance = await get_balance();
+			balance.set(walletBalance.get("ERG") || 0);
+			current_height = await get_current_height();
+		} catch (error) {
+			console.error("Error updating wallet information:", error);
+		}
+	}
+
+	$: ergInErgs = $balance ? (Number($balance) / 1_000_000_000).toFixed(4) : 0;
 </script>
 
 {#if comment === null}
-    <div class="navbar-container">
-        <div class="navbar-content">
-            <a href="#" class="logo-container">
-                Chat de Proyectos
-            </a>
-            <div class="flex-1"></div>
-            <div class="theme-toggle">
-                <Theme />
-            </div>
-        </div>
-    </div>
+	<!-- HEADER -->
+	<div class="navbar-container">
+		<div class="navbar-content">
+			<a href="#" class="logo-container">Topic Chat</a>
+			<div class="flex-1"></div>
+			<button class="user-icon" on:click={() => showProfileModal = true}>
+				<User class="w-6 h-6" />
+			</button>
+			<div class="theme-toggle"><Theme /></div>
+		</div>
+	</div>
 
-    <main class="container mx-auto px-4 py-8 pb-20">
-        <div class="max-w-3xl mx-auto">
+	<!-- PROFILE MODAL -->
+	{#if showProfileModal}
+		<div class="modal-backdrop" on:click={() => showProfileModal = false}></div>
+		<div class="modal">
+			<div class="flex justify-between items-center mb-4">
+				<h2 class="text-lg font-semibold">Profile</h2>
+				<Button variant="ghost" size="icon" on:click={() => showProfileModal = false}><X /></Button>
+			</div>
 
-            <div class="mb-8">
-                <Label for="project-select" class="text-lg font-semibold">Seleccionar Proyecto</Label>
-                <select 
-                    id="project-select"
-                    bind:value={$currentProjectId}
-                    class="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 sm:text-sm"
-                >
-                    {#each projects as project}
-                        <option value={project.id}>{project.name}</option>
-                    {/each}
-                </select>
-            </div>
-            
-            <h1 class="text-3xl font-bold mb-6">Comentarios del Proyecto</h1>
+			{#if profile}
+				<p class="mb-4 text-sm text-muted-foreground">Profile ID: {profile.token_id}</p>
+			{:else}
+				<p class="mb-4 text-sm text-muted-foreground">No profile found. Create one to build your reputation.</p>
+				<Button on:click={handleCreateProfile} disabled={isPostingComment}>
+					{isPostingComment ? "Creating..." : "Create Profile"}
+				</Button>
+			{/if}
+		</div>
+	{/if}
 
-            {#if profile !== null}
-                <div class="mb-6 p-4 bg-green-100 dark:bg-green-900 border border-green-400 rounded-md text-green-800 dark:text-green-200">
-                    Your profile id: {profile?.token_id}.
-                </div>
-            {:else}
-                <div class="mb-6 p-4 bg-yellow-100 dark:bg-yellow-900 border border-yellow-400 rounded-md text-yellow-800 dark:text-yellow-200">
-                    You don't have a reputation profile yet. Participate in the community to earn one!
-                </div>
+	<main class="container mx-auto px-4 py-8 pb-20">
+		<div class="max-w-3xl mx-auto">
 
-                <form on:submit|preventDefault={handleCreateProfile} class="space-y-4 mb-8">
-                    <Button type="submit" class="w-full sm:w-auto">
-                        {isPostingComment ? "Creando..." : "Crear Perfil"}
-                    </Button>
-                </form>
-            {/if}
+			<div class="mb-8">
+				<Label for="topic-select" class="text-lg font-semibold">Select Topic</Label>
+				<select
+					id="topic-select"
+					bind:value={$currentTopicId}
+					class="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 sm:text-sm"
+				>
+					{#each topics as topic}
+						<option value={topic.id}>{topic.name}</option>
+					{/each}
+				</select>
+			</div>
 
-            <form on:submit|preventDefault={handlePostComment} class="space-y-4 mb-8">
-                <div>
-                    <Label for="newComment">Tu Comentario</Label>
-                    <Textarea 
-                        id="newComment" 
-                        bind:value={newCommentText} 
-                        placeholder="Escribe tu comentario aquí..." 
-                        rows={4}
-                        required 
-                    />
-                </div>
-                <Button type="submit" class="w-full sm:w-auto" disabled={isPostingComment || !newCommentText.trim()}>
-                    {isPostingComment ? "Publicando..." : "Publicar Comentario"}
-                </Button>
-            </form>
+			<h1 class="text-3xl font-bold mb-6">Topic Comments</h1>
 
-            {#if $isLoading}
-                <p class="text-muted-foreground">Cargando comentarios...</p>
-            {:else if $error}
-                <div class="p-4 bg-red-100 dark:bg-red-900 border border-red-400 rounded-md text-red-800 dark:text-red-200">
-                    {$error}
-                </div>
-            {:else if $threads.length === 0}
-                <p class="text-muted-foreground text-center py-4">No hay comentarios aún. ¡Sé el primero!</p>
-            {:else}
-                <div class="space-y-6">
-                    {#each $threads as thread (thread.id)}
-                        <svelte:self comment={thread} />
-                    {/each}
-                </div>
-            {/if}
+			<form on:submit|preventDefault={handlePostComment} class="space-y-4 mb-8">
+				<div>
+					<Label for="newComment">Your Comment</Label>
+					<Textarea
+						id="newComment"
+						bind:value={newCommentText}
+						placeholder="Write your comment..."
+						rows={4}
+						required
+					/>
+				</div>
+				<div class="flex gap-4 items-center">
+					<Button variant={sentiment === true ? "default" : "outline"} size="icon" on:click={() => sentiment = true}><ThumbsUp /></Button>
+					<Button variant={sentiment === false ? "default" : "outline"} size="icon" on:click={() => sentiment = false}><ThumbsDown /></Button>
+					<Button type="submit" disabled={isPostingComment || !newCommentText.trim() || sentiment === null}>
+						{isPostingComment ? "Posting..." : "Post Comment"}
+					</Button>
+				</div>
+			</form>
 
-        </div>
-    </main>
+			<div class="flex items-center mb-6">
+				<input id="showAll" type="checkbox" bind:checked={showAllComments} class="mr-2" />
+				<Label for="showAll">Show all comments (including spam)</Label>
+			</div>
 
-    <footer class="page-footer">
-        <div class="footer-left"></div>
-        <div class="footer-center">
-            <div bind:this={scrollingTextElement} class="scrolling-text-wrapper">
-                {footerMessages[activeMessageIndex]}
-            </div>
-        </div>
-        <div class="footer-right"></div>
-    </footer>
+			{#if $isLoading}
+				<p class="text-muted-foreground">Loading comments...</p>
+			{:else if $error}
+				<div class="p-4 bg-red-100 dark:bg-red-900 border border-red-400 rounded-md text-red-800 dark:text-red-200">
+					{$error}
+				</div>
+			{:else if $threads.length === 0}
+				<p class="text-muted-foreground text-center py-4">No comments yet. Be the first!</p>
+			{:else}
+				<div class="space-y-6">
+					{#each $threads.filter(t => showAllComments || !t.isSpam) as thread (thread.id)}
+						<svelte:self comment={thread} />
+					{/each}
+				</div>
+			{/if}
+		</div>
+	</main>
+
+	<footer class="page-footer">
+		<div class="footer-center">
+			<div bind:this={scrollingTextElement} class="scrolling-text-wrapper">
+				{footerMessages[activeMessageIndex]}
+			</div>
+		</div>
+	</footer>
 
 {:else}
-    <div class="comment-container border rounded-md p-4 bg-card">
-        <div class="flex justify-between items-center mb-2">
-            <span class="font-semibold text-sm">@{comment.authorProfileTokenId.slice(0, 6)}</span>
-            {#if comment.submitting}
-                <span class="text-xs text-muted-foreground">
-                    Publicando...
-                </span>
-            {:else}
-                <span class="text-xs text-muted-foreground">
-                    {new Date(comment.timestamp).toLocaleString()}
-                </span>
-            {/if}
-        </div>
-        
-        <p class="text-base mb-3">{comment.text}</p>
-        
-        <div class="flex items-center gap-4">
-            <Button variant="ghost" size="sm" on:click={() => showReplyForm = !showReplyForm}>
-                {showReplyForm ? 'Cancelar' : 'Responder'}
-            </Button>
-            {#if !comment.isSpam}
-            <Button variant="ghost" size="sm" class="text-red-500" on:click={handleFlag} disabled={isFlagging}>
-                {isFlagging ? 'Marcando...' : 'Marcar Spam'}
-            </Button>
-            {:else}
-                Spam
-            {/if}
-        </div>
+	<div class="comment-container border rounded-md p-4 bg-card">
+		<div class="flex justify-between items-center mb-2">
+			<span class="font-semibold text-sm">@{comment.authorProfileTokenId.slice(0, 6)}</span>
+			<span class="text-xs text-muted-foreground">
+				{comment.submitting ? "Posting..." : new Date(comment.timestamp).toLocaleString()}
+			</span>
+		</div>
 
-        {#if commentError}
-            <p class_="text-red-500 text-sm mt-2">{commentError}</p>
-        {/if}
+		<p class="text-base mb-3">{comment.text}</p>
 
-        {#if showReplyForm}
-            <form on:submit|preventDefault={handleReply} class="space-y-3 mt-4">
-                <Label for="reply-{comment.tokenId}" class="sr-only">Tu Respuesta</Label>
-                <Textarea 
-                    id="reply-{comment.tokenId}" 
-                    bind:value={replyText}
-                    placeholder="Escribe tu respuesta..." 
-                    rows={3}
-                    required
-                />
-                <Button type="submit" size="sm" disabled={isReplying || !replyText.trim()}>
-                    {isReplying ? 'Enviando...' : 'Enviar Respuesta'}
-                </Button>
-            </form>
-        {/if}
+		<div class="flex items-center gap-4 mb-2">
+			<Button variant="ghost" size="sm" on:click={() => showReplyForm = !showReplyForm}>
+				{showReplyForm ? 'Cancel' : 'Reply'}
+			</Button>
+			{#if !comment.isSpam}
+				<Button variant="ghost" size="sm" class="text-red-500" on:click={handleFlag} disabled={isFlagging}>
+					{isFlagging ? 'Flagging...' : 'Mark Spam'}
+				</Button>
+			{:else}
+				<span class="text-xs text-muted-foreground">Spam</span>
+			{/if}
+		</div>
 
-        {#if comment.replies && comment.replies.length > 0}
-            <div class="replies-container mt-4 space-y-4">
-                {#each comment.replies as reply (reply.tokenId)}
-                    <svelte:self comment={reply} />
-                {/each}
-            </div>
-        {/if}
-    </div>
+		{#if commentError}
+			<p class="text-red-500 text-sm mt-2">{commentError}</p>
+		{/if}
+
+		{#if showReplyForm}
+			<form on:submit|preventDefault={handleReply} class="space-y-3 mt-4">
+				<Label for="reply-{comment.tokenId}" class="sr-only">Your Reply</Label>
+				<Textarea
+					id="reply-{comment.tokenId}"
+					bind:value={replyText}
+					placeholder="Write your reply..."
+					rows={3}
+					required
+				/>
+				<div class="flex gap-2">
+					<Button variant={replySentiment === true ? "default" : "outline"} size="icon" on:click={() => replySentiment = true}><ThumbsUp /></Button>
+					<Button variant={replySentiment === false ? "default" : "outline"} size="icon" on:click={() => replySentiment = false}><ThumbsDown /></Button>
+					<Button type="submit" size="sm" disabled={isReplying || !replyText.trim() || replySentiment === null}>
+						{isReplying ? 'Sending...' : 'Send Reply'}
+					</Button>
+				</div>
+			</form>
+		{/if}
+
+		{#if comment.replies && comment.replies.length > 0}
+			<div class="replies-container mt-4 space-y-4">
+				{#each comment.replies.filter(r => showAllComments || !r.isSpam) as reply (reply.tokenId)}
+					<svelte:self comment={reply} />
+				{/each}
+			</div>
+		{/if}
+	</div>
 {/if}
 
-
 <style lang="postcss">
-    :global(body) {
-        background-color: hsl(var(--background));
-        /* El padding-bottom se mueve al <main> para mejor control */
-    }
-    
-    .navbar-container {
-        @apply sticky top-0 z-50 w-full border-b backdrop-blur-lg;
-        background-color: hsl(var(--background) / 0.8);
-        border-bottom-color: hsl(var(--border));
-    }
+	.navbar-container {
+		@apply sticky top-0 z-50 w-full border-b backdrop-blur-lg;
+		background-color: hsl(var(--background) / 0.8);
+		border-bottom-color: hsl(var(--border));
+	}
 
-    .navbar-content {
-        @apply container flex h-16 items-center;
-    }
+	.navbar-content {
+		@apply container flex h-16 items-center gap-4;
+	}
 
-    .logo-container {
-        @apply mr-4 flex items-center;
-    }
+	.user-icon {
+		@apply p-2 rounded-full hover:bg-accent;
+	}
 
-    /* Estilos de Comentarios */
-    .comment-container {
-        /* Estilos base ya aplicados con clases de Tailwind */
-    }
+	.modal-backdrop {
+		@apply fixed inset-0 bg-black/50 z-40;
+	}
 
-    .replies-container {
-        @apply pl-6 border-l-2 border-border;
-    }
-    
-    /* Estilos del Footer (Restaurados) */
-    .page-footer {
-        @apply fixed bottom-0 left-0 right-0 z-40;
-        @apply flex items-center;
-        @apply h-12 px-6 gap-6;
-        @apply border-t text-sm text-muted-foreground;
-        background-color: hsl(var(--background) / 0.8);
-        border-top-color: hsl(var(--border));
-        backdrop-filter: blur(4px);
-    }
+	.modal {
+		@apply fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2
+		bg-card border border-border rounded-2xl p-6 w-96 z-50 shadow-lg;
+	}
 
-    .footer-left,
-    .footer-right {
-        @apply flex items-center gap-2 flex-shrink-0;
-        @apply w-16; 
-    }
+	.replies-container {
+		@apply pl-6 border-l-2 border-border;
+	}
 
-    .footer-center {
-        @apply flex-1 overflow-hidden;
-        -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
-        mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
-    }
+	.page-footer {
+		@apply fixed bottom-0 left-0 right-0 z-40 flex items-center h-12 px-6 border-t text-sm text-muted-foreground;
+		background-color: hsl(var(--background) / 0.8);
+		backdrop-filter: blur(4px);
+	}
 
-    .scrolling-text-wrapper {
-        @apply inline-block whitespace-nowrap;
-        animation: scroll-left 15s linear infinite; 
-    }
+	.footer-center {
+		@apply flex-1 overflow-hidden;
+		-webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+		mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+	}
 
-    @keyframes scroll-left {
-        from {
-            transform: translateX(100vw);
-        }
-        to {
-            transform: translateX(-100%);
-        }
-    }
+	.scrolling-text-wrapper {
+		@apply inline-block whitespace-nowrap;
+		animation: scroll-left 15s linear infinite;
+	}
+
+	@keyframes scroll-left {
+		from {
+			transform: translateX(100vw);
+		}
+		to {
+			transform: translateX(-100%);
+		}
+	}
 </style>
