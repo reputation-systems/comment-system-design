@@ -2,9 +2,7 @@
 
 ## Overview
 
-This repository describes a **decentralized Forum application** built on the Ergo blockchain. The app lets users create profiles (reputation proofs), post topics/discussions, reply to posts (forming threads), and flag boxes as spam. Every action is represented on-chain as a **box** with a fixed register layout. Replies and spam flags reference the **box_id** of the targeted box.
-
-Based on the Ergo Reputation System.
+This repository describes a **decentralized Forum application** built on the Ergo blockchain, based on the **Ergo Reputation System**. The app allows users to create profiles (reputation proofs), post topics and discussions, reply to posts (forming threads), and flag boxes as spam. Every action is represented on-chain as a **box** with a fixed register layout, where replies and spam flags reference the **box_id** of the targeted box.
 
 # Core Concepts
 
