@@ -210,15 +210,6 @@
 	$: ergInErgs = $balance ? (Number($balance) / 1_000_000_000).toFixed(4) : 0;
 </script>
 
-{#if profile_creation_tx}
-	<span class="text-muted-foreground">
-		<a
-		href={`${web_explorer_uri_tx}${profile_creation_tx}`}
-		target="_blank"
-		>{profile}</a>
-	</span>
-{/if}
-
 {#if comment === null}
 	<!-- HEADER -->
 	<div class="navbar-container">
@@ -293,7 +284,17 @@
 	{/if}
 
 	<main class="container mx-auto px-4 py-8 pb-20">
+		
 		<div class="max-w-6xl mx-auto">
+
+			{#if profile_creation_tx}
+				<span class="text-muted-foreground">
+					<a
+					href={`${web_explorer_uri_tx}${profile_creation_tx}`}
+					target="_blank"
+					>Profile creation tx: {profile_creation_tx}</a>
+				</span>
+			{/if}
 
 		<div class="mb-8 flex items-end space-x-2">
 			<div class="flex-1">
