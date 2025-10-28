@@ -22,15 +22,13 @@
 	import { type ReputationProof } from '$lib/ergo/object';
 	import { type Comment } from "$lib/ergo/commentObject";
 	import { User, ThumbsUp, ThumbsDown, X } from "lucide-svelte";
+    import { get } from 'svelte/store';
 
 	export let comment: Comment | null = null;
 
 	let profile: ReputationProof | null = null;
 
-	const topics = [
-		{ id: "716f6e863f744b9ac22c97ec7b76ea5f5908bc5b2f67c61510bfc4751384ea7a", name: "Topic Alpha" },
-		{ id: "c94a63ec4e9ae8700c671a908bd2121d4c049cec75a40f1309e09ab59d0bbc71", name: "Topic Beta" }
-	];
+	export let topic_id = get(currentTopicId);
 
 	let newCommentText = "";
 	let isPostingComment = false;
@@ -61,6 +59,15 @@
 
 	// show spam toggle
 	export let showAllComments = false;
+
+	async function handleLoadThreads() {
+		try {
+			currentTopicId.set(topic_id);
+			await loadThreads();
+		} catch (err) {
+			console.error("Error loading threads for topic:", err);
+		}
+	}
 
 	async function handleToggleShowAll(e: Event) {
 		const input = e.target as HTMLInputElement;
@@ -278,20 +285,26 @@
 	<main class="container mx-auto px-4 py-8 pb-20">
 		<div class="max-w-3xl mx-auto">
 
-			<div class="mb-8">
-				<Label for="topic-select" class="text-lg font-semibold">Select Topic</Label>
-				<select
-					id="topic-select"
-					bind:value={$currentTopicId}
-					class="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 sm:text-sm"
-				>
-					{#each topics as topic}
-						<option value={topic.id}>{topic.name}</option>
-					{/each}
-				</select>
+		<div class="mb-8 flex items-end space-x-2">
+			<div class="flex-1">
+				<label for="topic-id-input" class="text-lg font-semibold">Topic ID</label>
+				<input
+				type="text"
+				id="topic-id-input"
+				bind:value={topic_id}
+				class="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 sm:text-sm"
+				placeholder="Topic/Project/Discussion ID"
+				/>
 			</div>
+			<Button
+				on:click={handleLoadThreads}
+				class="mt-2 h-5 rounded-md px-3 text-sm"
+			>
+				Load
+			</Button>
+		</div>
 
-			<h1 class="text-3xl font-bold mb-6">Topic Comments</h1>
+			<h1 class="text-3xl font-bold mb-6">Comments</h1>
 
 			<form on:submit|preventDefault={handlePostComment} class="space-y-4 mb-8">
 				<div>
@@ -336,7 +349,7 @@
 				<div class="space-y-6">
                     {#each $threads as thread (thread.id)}
                         {#if showAllComments || !thread.isSpam}
-                            <svelte:self comment={thread} {showAllComments}/>
+                            <svelte:self comment={thread} {showAllComments} {topic_id}/>
                         {/if}
                     {/each}
 				</div>
@@ -423,7 +436,7 @@
 			<div class="replies-container mt-4 space-y-4">
 				{#each comment.replies as reply (reply.id)}
                     {#if showAllComments || !reply.isSpam}
-					    <svelte:self comment={reply} {showAllComments}/>
+					    <svelte:self comment={reply} {showAllComments} {topic_id}/>
                     {/if}
 				{/each}
 			</div>
