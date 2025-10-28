@@ -4,6 +4,7 @@
 
 This repository describes a **decentralized Forum application** built on the Ergo blockchain. The app lets users create profiles (reputation proofs), post topics/discussions, reply to posts (forming threads), and flag boxes as spam. Every action is represented on-chain as a **box** with a fixed register layout. Replies and spam flags reference the **box_id** of the targeted box.
 
+Based on the Ergo Reputation System.
 
 # Core Concepts
 
@@ -154,3 +155,26 @@ Although each user action produces an immutable on-chain box, **rendering, threa
 * Keep `R9` payloads compact (on-chain storage cost). If you need larger content, store the full content off-chain (IPFS) and place a content hash or CID in `R9`.  (Check first what is the cost on Ergo, in most cases can be submited directly).
 * When designing `R7` (owner proposition bytes), align with the wallet/owner control scheme used by your app so ownership proofs are easy to verify.
 * Maintain backwards compatibility if you ever change the reputation contract; consider versioning R4 values or embedding a `schema_version` into `R9`.
+
+---
+
+# Profile-level Blocking (Individual and Trust-based Filters)
+
+It is also possible to implement **individual blocking mechanisms** between profiles:
+
+* For example, **Alice** posts content that **Bob** dislikes.  
+  Bob can **block Alice** by publishing an on-chain proof (a small box referencing Alice’s profile).  
+  This can be implemented as a new action type — a `PROFILE`-targeted block — using the same reputation contract structure.
+
+* This block box would:
+  * Have `R4 = PROFILE` (indicating it targets a profile).
+  * Have `R5` = `profile_box_id` (the `box_id` of Alice’s profile).
+  * Be **locked** (`R6=true`), immutable, and easily verifiable by other clients.
+  * Optionally include reason or metadata in `R9`.
+
+* Clients reconstruct blocks off-chain and simply **hide all content authored by blocked profiles**. Unlike spam flags, this is **personal** — only the blocking user’s view is affected.
+
+* Furthermore, **trust-based propagation** is possible:  
+  If **Charles** trusts **Bob**, he can adopt Bob’s blocklist automatically — meaning that if Bob blocks Alice, Charles also no longer sees Alice’s content.  
+
+This allows the creation of **filter-profiles**, specialized accounts that curate or moderate content, which others can follow or subscribe to as decentralized, user-driven moderation layers — entirely **non-invasive**, transparent, and reversible at the user’s discretion.
