@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { browser } from '$app/environment';
 	import Theme from './Theme.svelte';
 	import { Button } from "$lib/components/ui/button/index.js";
@@ -59,7 +59,21 @@
 		activeMessageIndex = (activeMessageIndex + 1) % footerMessages.length;
 	}
 
-	let showAllComments = false;
+	// show spam toggle
+	export let showAllComments = false;
+
+	async function handleToggleShowAll(e: Event) {
+		const input = e.target as HTMLInputElement;
+		showAllComments = input.checked;
+		// Force a reload of threads after toggling so backend/store can return correct set
+		// use tick to ensure DOM/reactivity has updated before reloading if needed
+		await tick();
+		try {
+			await loadThreads();
+		} catch (err) {
+			console.error("Failed to reload threads after toggling showAllComments:", err);
+		}
+	}
 
 	async function handlePostComment() {
 		if (!newCommentText.trim() || sentiment === null) return;
@@ -194,7 +208,7 @@
 		<div class="navbar-content">
 			<a href="#" class="logo-container">Topic Chat</a>
 			<div class="flex-1"></div>
-			<button class="user-icon" on:click={() => showProfileModal = true}>
+			<button class="user-icon" on:click={() => showProfileModal = true} aria-label="Open profile">
 				<User class="w-6 h-6" />
 			</button>
 			<div class="theme-toggle"><Theme /></div>
@@ -203,15 +217,55 @@
 
 	<!-- PROFILE MODAL -->
 	{#if showProfileModal}
+		<!-- Darker backdrop (less transparent) -->
 		<div class="modal-backdrop" on:click={() => showProfileModal = false}></div>
-		<div class="modal">
+
+		<div class="modal" role="dialog" aria-modal="true" aria-label="Profile">
 			<div class="flex justify-between items-center mb-4">
 				<h2 class="text-lg font-semibold">Profile</h2>
 				<Button variant="ghost" size="icon" on:click={() => showProfileModal = false}><X /></Button>
 			</div>
 
 			{#if profile}
-				<p class="mb-4 text-sm text-muted-foreground">Profile ID: {profile.token_id}</p>
+
+                <p class="mb-4 text-sm text-muted-foreground">
+                Reputation proof token ID:
+                <span class="font-mono text-foreground">{profile.token_id}</span>
+                </p>
+
+                {#if typeof profile.current_boxes?.[0]?.content === 'object' && profile.current_boxes[0].content !== null}
+                <div class="overflow-x-auto max-h-64">
+                    <table class="min-w-full border border-border rounded-md text-sm">
+                    <thead class="bg-muted/50">
+                        <tr>
+                        <th class="px-3 py-2 text-left font-semibold border-b border-border">Key</th>
+                        <th class="px-3 py-2 text-left font-semibold border-b border-border">Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {#each Object.entries(profile.current_boxes[0].content) as [key, value]}
+                        <tr class="odd:bg-muted/20 even:bg-transparent">
+                            <td class="px-3 py-2 font-mono text-xs text-muted-foreground border-b border-border align-top">
+                            {key.toUpperCase()}
+                            </td>
+                            <td class="px-3 py-2 font-mono text-xs text-foreground border-b border-border break-all align-top">
+                            {typeof value === 'object' ? JSON.stringify(value, null, 2) : value}
+                            </td>
+                        </tr>
+                        {/each}
+                    </tbody>
+                    </table>
+                </div>
+                {:else if profile.current_boxes?.[0]?.content}
+                <div class="bg-muted p-3 rounded-md text-sm text-foreground">
+                    {profile.current_boxes[0].content}
+                </div>
+                {:else}
+                <p class="text-muted-foreground text-sm italic">
+                    No content available.
+                </p>
+                {/if}
+
 			{:else}
 				<p class="mb-4 text-sm text-muted-foreground">No profile found. Create one to build your reputation.</p>
 				<Button on:click={handleCreateProfile} disabled={isPostingComment}>
@@ -260,7 +314,13 @@
 			</form>
 
 			<div class="flex items-center mb-6">
-				<input id="showAll" type="checkbox" bind:checked={showAllComments} class="mr-2" />
+				<input
+					id="showAll"
+					type="checkbox"
+					checked={showAllComments}
+					on:change={handleToggleShowAll}
+					class="mr-2"
+				/>
 				<Label for="showAll">Show all comments (including spam)</Label>
 			</div>
 
@@ -274,9 +334,11 @@
 				<p class="text-muted-foreground text-center py-4">No comments yet. Be the first!</p>
 			{:else}
 				<div class="space-y-6">
-					{#each $threads.filter(t => showAllComments || !t.isSpam) as thread (thread.id)}
-						<svelte:self comment={thread} />
-					{/each}
+                    {#each $threads as thread (thread.id)}
+                        {#if showAllComments || !thread.isSpam}
+                            <svelte:self comment={thread} {showAllComments}/>
+                        {/if}
+                    {/each}
 				</div>
 			{/if}
 		</div>
@@ -340,8 +402,10 @@
 
 		{#if comment.replies && comment.replies.length > 0}
 			<div class="replies-container mt-4 space-y-4">
-				{#each comment.replies.filter(r => showAllComments || !r.isSpam) as reply (reply.tokenId)}
-					<svelte:self comment={reply} />
+				{#each comment.replies as reply (reply.id)}
+                    {#if showAllComments || !reply.isSpam}
+					    <svelte:self comment={reply} {showAllComments}/>
+                    {/if}
 				{/each}
 			</div>
 		{/if}
@@ -364,13 +428,14 @@
 	}
 
 	.modal-backdrop {
-		@apply fixed inset-0 bg-black/50 z-40;
+		@apply fixed inset-0 bg-black/80 z-50;
 	}
 
-	.modal {
-		@apply fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2
-		bg-card border border-border rounded-2xl p-6 w-96 z-50 shadow-lg;
-	}
+    .modal {
+        @apply fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2
+        bg-card border border-border rounded-2xl p-6 w-[36rem] z-[60] shadow-lg;
+        background-color: var(--card);
+    }
 
 	.replies-container {
 		@apply pl-6 border-l-2 border-border;
