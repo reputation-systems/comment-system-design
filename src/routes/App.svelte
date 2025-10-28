@@ -21,7 +21,7 @@
 	import { explorer_uri, web_explorer_uri_tx } from '$lib/ergo/envs';
 	import { fetchProfile } from '$lib/ergo/commentFetch';
 	import { type ReputationProof } from '$lib/ergo/object';
-	import { type Comment } from "$lib/ergo/commentObject";
+	import { getScore, type Comment } from "$lib/ergo/commentObject";
 	import { User, ThumbsUp, ThumbsDown, X } from "lucide-svelte";
     import { get } from 'svelte/store';
 
@@ -395,6 +395,15 @@
 				{:else if comment.sentiment === false}
 					<ThumbsDown class="h-4 w-4 text-red-500" />
 				{/if}
+
+				<span
+					class="text-sm font-medium"
+					class:text-green-600={getScore(comment) > 0}
+					class:text-red-600={getScore(comment) < 0}
+					class:text-gray-500={getScore(comment) === 0}
+				>
+					{getScore(comment)}
+				</span>
             </div>
 			<span class="text-xs text-muted-foreground">
 			{#if comment.submitting_tx}

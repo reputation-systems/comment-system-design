@@ -207,7 +207,7 @@ export async function fetchComments(discussion: string, reply: boolean = false):
                     isSpam: isSpam,
                     replies: await fetchComments(box.boxId, true),
                     submitting_tx: null,
-                    sentiment: box.additionalRegisters.R8?.renderedValue === 'true',
+                    sentiment: box.additionalRegisters.R8?.renderedValue === 'true'
                 };
 
                 comments.push(comment);
