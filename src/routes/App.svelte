@@ -25,6 +25,7 @@
 	import { User, ThumbsUp, ThumbsDown, X } from "lucide-svelte";
     import { get } from 'svelte/store';
 
+	export let connect_executed = false;
 	export let comment: Comment | null = null;
 
 	let profile: ReputationProof | null = null;
@@ -162,7 +163,9 @@
 	}
 
 	async function connectWallet() {
-		if (typeof ergoConnector !== 'undefined') {
+		if (typeof ergoConnector !== 'undefined' && !connect_executed) {
+			connect_executed = true;
+			console.log("Connect wallet");
 			const nautilus = ergoConnector.nautilus;
 			if (nautilus && await nautilus.connect()) {
 				address.set(await ergo.get_change_address());
@@ -360,7 +363,7 @@
 				<div class="space-y-6">
                     {#each $threads as thread (thread.id)}
                         {#if showAllComments || !thread.isSpam}
-                            <svelte:self comment={thread} {showAllComments} {topic_id}/>
+                            <svelte:self comment={thread} {showAllComments} {topic_id} {connect_executed}/>
                         {/if}
                     {/each}
 				</div>
@@ -447,7 +450,7 @@
 			<div class="replies-container mt-4 space-y-4">
 				{#each comment.replies as reply (reply.id)}
                     {#if showAllComments || !reply.isSpam}
-					    <svelte:self comment={reply} {showAllComments} {topic_id}/>
+					    <svelte:self comment={reply} {showAllComments} {topic_id} {connect_executed}/>
                     {/if}
 				{/each}
 			</div>
