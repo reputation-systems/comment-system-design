@@ -14,7 +14,8 @@
 		postComment,
 		replyToComment,
 		flagSpam,
-		getOrCreateProfileBox
+        createProfileBox
+
 	} from '$lib/ergo/commentStore';
 	import { address, connected, balance, network } from "$lib/ergo/store";
 	import { explorer_uri, web_explorer_uri_tx } from '$lib/ergo/envs';
@@ -30,6 +31,7 @@
 
 	export let topic_id = get(currentTopicId);
 
+	let profile_creation_tx = "";
 	let newCommentText = "";
 	let isPostingComment = false;
 	let replyText = "";
@@ -40,7 +42,6 @@
 	let sentiment: boolean | null = null;
 	let replySentiment: boolean | null = null;
 
-	let showWalletInfo = false;
 	let current_height: number | null = null;
 	let balanceUpdateInterval: number;
 
@@ -117,7 +118,7 @@
 
 	async function handleCreateProfile() {
 		if (!profile) {
-			await getOrCreateProfileBox();
+			profile_creation_tx = await createProfileBox();
 			profile = await fetchProfile(ergo);
 			showProfileModal = false;
 		}
@@ -208,6 +209,15 @@
 
 	$: ergInErgs = $balance ? (Number($balance) / 1_000_000_000).toFixed(4) : 0;
 </script>
+
+{#if profile_creation_tx}
+	<span class="text-muted-foreground">
+		<a
+		href={`${web_explorer_uri_tx}${profile_creation_tx}`}
+		target="_blank"
+		>{profile}</a>
+	</span>
+{/if}
 
 {#if comment === null}
 	<!-- HEADER -->

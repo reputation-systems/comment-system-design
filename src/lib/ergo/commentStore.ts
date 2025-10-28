@@ -19,54 +19,64 @@ async function fetchThreadsAPI(projectId: string): Promise<Comment[]> {
     return await fetchComments(projectId);
 }
 
+export async function createProfileBox(): Promise<string> {
+    const profileTxId = await generate_reputation_proof(
+        PROFILE_TOTAL_SUPPLY,
+        PROFILE_TOTAL_SUPPLY,
+        PROFILE_TYPE_NFT_ID,
+        undefined,
+        true,
+        { name: "Anon" },
+        false, // The profile box should NOT be locked
+        undefined
+    );
+
+    if (!profileTxId) {
+        throw new Error("Fatal error: The profile creation transaction failed to send.");
+    }
+
+    console.warn(
+        "User profile not found. A new one has been created. Please wait ~2 minutes for the transaction to confirm and try again."
+    );
+
+    return profileTxId;
+}
+
 /**
  * Gets the main box (the one with the most tokens) from the 'reputation_proof' store.
  * If the store is empty, it attempts to create the initial profile proof.
  */
-export async function getOrCreateProfileBox(): Promise<RPBox> {
+async function getOrCreateProfileBox(): Promise<RPBox|null> {
     const proof = get(reputation_proof);
 
     // --- Case 1: The profile proof does NOT exist ---
     if (!proof || !proof.current_boxes || proof.current_boxes.length === 0) {
         console.log("No user reputation proof found. Creating profile proof...");
 
-        const profileTxId = await generate_reputation_proof(
-            PROFILE_TOTAL_SUPPLY,
-            PROFILE_TOTAL_SUPPLY,
-            PROFILE_TYPE_NFT_ID,
-            undefined,
-            true,
-            { name: "Anon" },
-            false, // The profile box should NOT be locked
-            undefined
-        );
+        await createProfileBox();
 
-        if (!profileTxId) {
-            throw new Error("Fatal error: The profile creation transaction failed to send.");
+        return null;
+
+    } else {
+        // --- Case 2: The profile proof DOES exist ---
+        const mainBox = proof.current_boxes[0];
+
+        if (mainBox.is_locked) {
+            throw new Error("Error: Your main profile box is locked (is_locked=true) and cannot be spent.");
+        }
+        if (mainBox.token_amount < 1) {
+            throw new Error("Error: You do not have enough reputation tokens left in your main box to perform this action.");
         }
 
-        console.warn(
-            "User profile not found. A new one has been created. Please wait ~2 minutes for the transaction to confirm and try again."
+        console.log(
+            "Using existing profile box as input:",
+            mainBox.box_id,
+            "with profile token:",
+            mainBox.token_id
         );
+        return mainBox;
     }
 
-    // --- Case 2: The profile proof DOES exist ---
-    const mainBox = proof.current_boxes[0];
-
-    if (mainBox.is_locked) {
-        throw new Error("Error: Your main profile box is locked (is_locked=true) and cannot be spent.");
-    }
-    if (mainBox.token_amount < 1) {
-        throw new Error("Error: You do not have enough reputation tokens left in your main box to perform this action.");
-    }
-
-    console.log(
-        "Using existing profile box as input:",
-        mainBox.box_id,
-        "with profile token:",
-        mainBox.token_id
-    );
-    return mainBox;
 }
 
 async function postCommentAPI(projectId: string, text: string, sentiment: boolean): Promise<Comment> {
