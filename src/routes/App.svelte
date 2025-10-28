@@ -293,7 +293,7 @@
 	{/if}
 
 	<main class="container mx-auto px-4 py-8 pb-20">
-		<div class="max-w-3xl mx-auto">
+		<div class="max-w-6xl mx-auto">
 
 		<div class="mb-8 flex items-end space-x-2">
 			<div class="flex-1">
