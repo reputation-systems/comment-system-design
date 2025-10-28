@@ -17,7 +17,7 @@
         createProfileBox
 
 	} from '$lib/ergo/commentStore';
-	import { address, connected, balance, network } from "$lib/ergo/store";
+	import { address, connected, balance, network, viewMode } from "$lib/ergo/store";
 	import { explorer_uri, web_explorer_uri_tx } from '$lib/ergo/envs';
 	import { fetchProfile } from '$lib/ergo/commentFetch';
 	import { type ReputationProof } from '$lib/ergo/object';
@@ -58,6 +58,21 @@
 	function handleAnimationIteration() {
 		activeMessageIndex = (activeMessageIndex + 1) % footerMessages.length;
 	}
+
+    type FlatComment = Comment & { _parentId?: string };
+
+    function flattenComments(comments: Comment[], parentId: string | undefined = undefined): FlatComment[] {
+        return comments.reduce((acc, comment) => {
+            const flatComment: FlatComment = { ...comment, _parentId: parentId };
+            acc.push(flatComment);
+            if (comment.replies) {
+                acc.push(...flattenComments(comment.replies, comment.id));
+            }
+            return acc;
+        }, [] as FlatComment[]);
+    }
+
+    $: allCommentsFlat = flattenComments($threads).sort((a, b) => a.timestamp - b.timestamp);
 
 	// show spam toggle
 	export let showAllComments = false;
@@ -345,17 +360,30 @@
 				</div>
 			</form>
 
-			<div class="flex items-center mb-6">
-				<input
-					id="showAll"
-					type="checkbox"
-					checked={showAllComments}
-					on:change={handleToggleShowAll}
-					class="mr-2"
-				/>
-				<Label for="showAll">Show all comments (including spam)</Label>
-			</div>
+			<div class="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
+				<div class="flex items-center">
+					<input
+						id="showAll"
+						type="checkbox"
+						checked={showAllComments}
+						on:change={handleToggleShowAll}
+						class="mr-2"
+					/>
+					<Label for="showAll">Show all comments (including spam)</Label>
+				</div>
 
+				<div class="flex items-center">
+					<input
+						id="forumView"
+						type="checkbox"
+						on:change={() => $viewMode = ($viewMode === 'nested' ? 'forum' : 'nested')}
+						checked={$viewMode === 'forum'}
+						class="mr-2"
+					/>
+					<Label for="forumView">Forum view (longer texts)</Label>
+				</div>
+			</div>
+			
 			{#if $isLoading}
 				<p class="text-muted-foreground">Loading comments...</p>
 			{:else if $error}
@@ -365,13 +393,38 @@
 			{:else if $threads.length === 0}
 				<p class="text-muted-foreground text-center py-4">No comments yet. Be the first!</p>
 			{:else}
-				<div class="space-y-6">
-                    {#each $threads as thread (thread.id)}
-                        {#if showAllComments || !thread.isSpam}
-                            <svelte:self comment={thread} {showAllComments} {topic_id} {connect_executed}/>
-                        {/if}
-                    {/each}
-				</div>
+				{#if $viewMode === 'nested'}
+					<div class="space-y-6">
+						{#each $threads as thread (thread.id)}
+							{#if showAllComments || !thread.isSpam}
+								<svelte:self comment={thread} {showAllComments} {topic_id} {connect_executed}/>
+							{/if}
+						{/each}
+					</div>
+				{:else}
+					<div class="space-y-0">
+                        {#each allCommentsFlat as flatComment (flatComment.id)}
+                            {#if showAllComments || !flatComment.isSpam}
+                                
+                                {#if flatComment._parentId}
+                                    <div class="flex items-center gap-2 text-sm text-muted-foreground pt-4 pl-4">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-reply"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
+                                        <span>
+                                            Responding to 
+                                            <a href="#comment-{flatComment._parentId}" class="underline hover:text-primary">
+                                                @{flatComment._parentId.slice(0, 6)}
+                                            </a>
+                                        </span>
+                                    </div>
+                                {/if}
+
+                                <div id="comment-{flatComment.id}" class="pt-4">
+                                    <svelte:self comment={flatComment} {showAllComments} {topic_id} {connect_executed}/>
+                                </div>
+                            {/if}
+                        {/each}
+                    </div>
+				{/if}
 			{/if}
 		</div>
 	</main>
@@ -385,7 +438,7 @@
 	</footer>
 
 {:else}
-	<div class="comment-container border rounded-md p-4 bg-card">
+	<div class="comment-container border rounded-md p-4 bg-card" id="comment-{comment.id}">
 		<div class="flex justify-between items-center mb-2">
 			<div class="flex items-center gap-2">
 				<span class="font-semibold text-sm">@{comment.authorProfileTokenId.slice(0, 6)}</span>
@@ -442,9 +495,9 @@
 
 		{#if showReplyForm}
 			<form on:submit|preventDefault={handleReply} class="space-y-3 mt-4">
-				<Label for="reply-{comment.tokenId}" class="sr-only">Your Reply</Label>
+				<Label for="reply-{comment.id}" class="sr-only">Your Reply</Label>
 				<Textarea
-					id="reply-{comment.tokenId}"
+					id="reply-{comment.id}"
 					bind:value={replyText}
 					placeholder="Write your reply..."
 					rows={3}
@@ -460,7 +513,7 @@
 			</form>
 		{/if}
 
-		{#if comment.replies && comment.replies.length > 0}
+		{#if $viewMode === 'nested' && comment.replies && comment.replies.length > 0}
 			<div class="replies-container mt-4 space-y-4">
 				{#each comment.replies as reply (reply.id)}
                     {#if showAllComments || !reply.isSpam}
