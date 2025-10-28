@@ -94,7 +94,8 @@ async function postCommentAPI(projectId: string, text: string, sentiment: boolea
         timestamp: Date.now(),
         replies: [],
         isSpam: false,
-        submitting: true
+        submitting_tx: tx,
+        sentiment: sentiment
     };
     return newComment;
 }
@@ -129,7 +130,8 @@ async function replyToCommentAPI(parentCommentId: string, projectId: string, tex
         timestamp: Date.now(),
         replies: [],
         isSpam: false,
-        submitting: true
+        submitting_tx: tx,
+        sentiment: sentiment
     };
     return newReply;
 }

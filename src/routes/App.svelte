@@ -17,7 +17,7 @@
 		getOrCreateProfileBox
 	} from '$lib/ergo/commentStore';
 	import { address, connected, balance, network } from "$lib/ergo/store";
-	import { explorer_uri } from '$lib/ergo/envs';
+	import { explorer_uri, web_explorer_uri_tx } from '$lib/ergo/envs';
 	import { fetchProfile } from '$lib/ergo/commentFetch';
 	import { type ReputationProof } from '$lib/ergo/object';
 	import { type Comment } from "$lib/ergo/commentObject";
@@ -365,7 +365,18 @@
 				{/if}
             </div>
 			<span class="text-xs text-muted-foreground">
-				{comment.submitting ? "Posting..." : new Date(comment.timestamp).toLocaleString()}
+			{#if comment.submitting_tx}
+				<a
+				href={`${web_explorer_uri_tx}${comment.submitting_tx}`}
+				target="_blank"
+				rel="noopener noreferrer"
+				class="underline hover:text-primary"
+				>
+				Posting...
+				</a>
+			{:else}
+				{new Date(comment.timestamp).toLocaleString()}
+			{/if}
 			</span>
 		</div>
 

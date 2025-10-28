@@ -238,7 +238,7 @@ export async function fetchComments(discussion: string, reply: boolean = false):
                     timestamp: await getTimestampFromBlockId(box.blockId), // Usamos el timestamp de la API
                     isSpam: isSpam,
                     replies: await fetchComments(box.boxId, true),   // Las respuestas deben cargarse por separado
-                    submitting: false,
+                    submitting_tx: null,
                     sentiment: box.additionalRegisters.R8?.renderedValue === 'true',
                 };
 
