@@ -16,4 +16,4 @@ export const types = writable<Map<string, TypeNFT>>(new Map());
 export const proofs = writable<Map<string, ReputationProof>>(new Map());
 export const reputation_proof = writable<ReputationProof | null>(null);
 
-export const viewMode = writable<'nested' | 'forum'>('nested');
+export const viewMode = writable<'nested' | 'forum'>('forum');

@@ -27,6 +27,7 @@
 
 	export let connect_executed = false;
 	export let comment: Comment | null = null;
+	export let _parentId: string | undefined = undefined;
 
 	let profile: ReputationProof | null = null;
 
@@ -73,6 +74,10 @@
     }
 
     $: allCommentsFlat = flattenComments($threads).sort((a, b) => a.timestamp - b.timestamp);
+	$: allCommentsFlatProfilesMap = allCommentsFlat.reduce((acc, comment) => {
+			acc[comment.id] = comment.authorProfileTokenId;
+			return acc;
+		}, {} as Record<string, string>);
 
 	// show spam toggle
 	export let showAllComments = false;
@@ -380,7 +385,7 @@
 						checked={$viewMode === 'forum'}
 						class="mr-2"
 					/>
-					<Label for="forumView">Forum view (longer texts)</Label>
+					<Label for="forumView">Forum view</Label>
 				</div>
 			</div>
 			
@@ -402,24 +407,16 @@
 						{/each}
 					</div>
 				{:else}
-					<div class="space-y-0">
+					<div class="forum-container flex flex-col">
                         {#each allCommentsFlat as flatComment (flatComment.id)}
-                            {#if showAllComments || !flatComment.isSpam}
-                                
-                                {#if flatComment._parentId}
-                                    <div class="flex items-center gap-2 text-sm text-muted-foreground pt-4 pl-4">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-reply"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
-                                        <span>
-                                            Responding to 
-                                            <a href="#comment-{flatComment._parentId}" class="underline hover:text-primary">
-                                                @{flatComment._parentId.slice(0, 6)}
-                                            </a>
-                                        </span>
-                                    </div>
-                                {/if}
-
-                                <div id="comment-{flatComment.id}" class="pt-4">
-                                    <svelte:self comment={flatComment} {showAllComments} {topic_id} {connect_executed}/>
+							{#if showAllComments || !flatComment.isSpam}
+                                <div class="forum-comment-wrapper border-t border-border first:border-t-0 py-4">
+                                    <svelte:self 
+                                        comment={flatComment} 
+                                        _parentId={flatComment._parentId} {showAllComments} 
+                                        {topic_id} 
+                                        {connect_executed}
+                                    />
                                 </div>
                             {/if}
                         {/each}
@@ -438,91 +435,144 @@
 	</footer>
 
 {:else}
-	<div class="comment-container border rounded-md p-4 bg-card" id="comment-{comment.id}">
-		<div class="flex justify-between items-center mb-2">
-			<div class="flex items-center gap-2">
-				<span class="font-semibold text-sm">@{comment.authorProfileTokenId.slice(0, 6)}</span>
+    <div 
+        class="comment-container"
+        class:border={$viewMode === 'nested'}
+        class:rounded-md={$viewMode === 'nested'}
+        class:p-4={$viewMode === 'nested'}
+        class:bg-card={$viewMode === 'nested'}
+        id="comment-{comment.id}"
+    >
+        <div class="flex justify-between items-center mb-2">
+            <div class="flex items-center gap-2">
+                <span class="font-semibold text-sm">@{comment.authorProfileTokenId.slice(0, 6)}</span>
 
-				{#if comment.sentiment === true}
-					<ThumbsUp class="h-4 w-4 text-green-500" />
-				{:else if comment.sentiment === false}
-					<ThumbsDown class="h-4 w-4 text-red-500" />
+				{#if $viewMode === 'forum'}
+					<span class="text-xs text-muted-foreground">#{comment.id.slice(0, 6)}</span>
 				{/if}
 
-				<span
-					class="text-sm font-medium"
-					class:text-green-600={getScore(comment) > 0}
-					class:text-red-600={getScore(comment) < 0}
-					class:text-gray-500={getScore(comment) === 0}
-				>
-					{getScore(comment)}
-				</span>
-            </div>
-			<span class="text-xs text-muted-foreground">
-			{#if comment.submitting_tx}
-				<a
-				href={`${web_explorer_uri_tx}${comment.submitting_tx}`}
-				target="_blank"
-				rel="noopener noreferrer"
-				class="underline hover:text-primary"
-				>
-				Posting...
-				</a>
-			{:else}
-				{new Date(comment.timestamp).toLocaleString()}
-			{/if}
-			</span>
-		</div>
-
-		<p class="text-base mb-3">{comment.text}</p>
-
-		<div class="flex items-center gap-4 mb-2">
-			<Button variant="ghost" size="sm" on:click={() => showReplyForm = !showReplyForm} disabled={!profile}>
-				{showReplyForm ? 'Cancel' : 'Reply'}
-			</Button>
-			{#if !comment.isSpam}
-				<Button variant="ghost" size="sm" class="text-red-500" on:click={handleFlag} disabled={isFlagging || !profile}>
-					{isFlagging ? 'Flagging...' : 'Mark Spam'}
-				</Button>
-			{:else}
-				<span class="text-xs text-muted-foreground">Spam</span>
-			{/if}
-		</div>
-
-		{#if commentError}
-			<p class="text-red-500 text-sm mt-2">{commentError}</p>
-		{/if}
-
-		{#if showReplyForm}
-			<form on:submit|preventDefault={handleReply} class="space-y-3 mt-4">
-				<Label for="reply-{comment.id}" class="sr-only">Your Reply</Label>
-				<Textarea
-					id="reply-{comment.id}"
-					bind:value={replyText}
-					placeholder="Write your reply..."
-					rows={3}
-					required
-				/>
-				<div class="flex gap-2">
-					<Button variant={replySentiment === true ? "default" : "outline"} size="icon" on:click={() => replySentiment = true}><ThumbsUp /></Button>
-					<Button variant={replySentiment === false ? "default" : "outline"} size="icon" on:click={() => replySentiment = false}><ThumbsDown /></Button>
-					<Button type="submit" size="sm" disabled={isReplying || !replyText.trim() || replySentiment === null}>
-						{isReplying ? 'Sending...' : 'Send Reply'}
-					</Button>
-				</div>
-			</form>
-		{/if}
-
-		{#if $viewMode === 'nested' && comment.replies && comment.replies.length > 0}
-			<div class="replies-container mt-4 space-y-4">
-				{#each comment.replies as reply (reply.id)}
-                    {#if showAllComments || !reply.isSpam}
-					    <svelte:self comment={reply} {showAllComments} {topic_id} {connect_executed}/>
+                {#if $viewMode === 'nested'}
+                    {#if comment.sentiment === true}
+                        <ThumbsUp class="h-4 w-4 text-green-500" />
+                    {:else if comment.sentiment === false}
+                        <ThumbsDown class="h-4 w-4 text-red-500" />
                     {/if}
-				{/each}
-			</div>
-		{/if}
-	</div>
+                    <span
+                        class="text-sm font-medium"
+                        class:text-green-600={getScore(comment) > 0}
+                        class:text-red-600={getScore(comment) < 0}
+                        class:text-gray-500={getScore(comment) === 0}
+                    >
+                        {getScore(comment)}
+                    </span>
+                {/if}
+            </div>
+
+            <div class="flex items-center gap-3 text-xs text-muted-foreground">
+                {#if $viewMode === 'forum' && _parentId}
+                    <span class="flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-reply"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
+						<!-- svelte-ignore a11y-missing-attribute -->
+						<a class="hover:text-primary">
+                            
+                            {#if allCommentsFlatProfilesMap && allCommentsFlatProfilesMap[_parentId]}
+                                <span class="font-semibold">@{allCommentsFlatProfilesMap[_parentId].slice(0, 6)}</span>
+                            {/if}
+
+                            <span class="ml-1 opacity-80">#{_parentId.slice(0, 6)}</span>
+
+                        </a>
+                    </span>
+                {/if}
+
+                <span class="flex-shrink-0">
+                {#if comment.submitting_tx}
+                    <a
+                    href={`${web_explorer_uri_tx}${comment.submitting_tx}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="underline hover:text-primary"
+                    >
+                    Posting...
+                    </a>
+                {:else}
+                    {new Date(comment.timestamp).toLocaleString()}
+                {/if}
+                </span>
+            </div>
+        </div>
+
+        <p class="text-base mb-3">{comment.text}</p>
+        
+        <div class="flex justify-between items-center flex-wrap gap-x-4 gap-y-2">
+            <div class="flex items-center gap-4">
+                <Button variant="ghost" size="sm" on:click={() => showReplyForm = !showReplyForm} disabled={!profile}>
+                    {showReplyForm ? 'Cancel' : 'Reply'}
+                </Button>
+                {#if !comment.isSpam}
+                    <Button variant="ghost" size="sm" class="text-red-500" on:click={handleFlag} disabled={isFlagging || !profile}>
+                        {isFlagging ? 'Flagging...' : 'Mark Spam'}
+                    </Button>
+                {:else}
+                    <span class="text-xs text-muted-foreground">Spam</span>
+                {/if}
+            </div>
+
+            {#if $viewMode === 'forum'}
+                <div class="flex items-center gap-2">
+                    {#if comment.sentiment === true}
+                        <ThumbsUp class="h-4 w-4 text-green-500" />
+                    {:else if comment.sentiment === false}
+                        <ThumbsDown class="h-4 w-4 text-red-500" />
+                    {/if}
+                    <span
+                        class="text-sm font-medium"
+                        class:text-green-600={getScore(comment) > 0}
+                        class:text-red-600={getScore(comment) < 0}
+                        class:text-gray-500={getScore(comment) === 0}
+                    >
+                        {getScore(comment)}
+                    </span>
+                </div>
+            {/if}
+        </div>
+
+        {#if commentError}
+            <p class="text-red-500 text-sm mt-2">{commentError}</p>
+        {/if}
+
+        {#if showReplyForm}
+            <form on:submit|preventDefault={handleReply} class="space-y-3 mt-4">
+                <Label for="reply-{comment.id}" class="sr-only">Your Reply</Label>
+                <Textarea
+                    id="reply-{comment.id}"
+                    bind:value={replyText}
+                    placeholder="Write your reply..."
+                    rows={3}
+                    required
+                />
+                <div class="flex gap-2">
+                    <Button variant={replySentiment === true ? "default" : "outline"} size="icon" on:click={() => replySentiment = true}><ThumbsUp /></Button>
+                    <Button variant={replySentiment === false ? "default" : "outline"} size="icon" on:click={() => replySentiment = false}><ThumbsDown /></Button>
+                    <Button type="submit" size="sm" disabled={isReplying || !replyText.trim() || replySentiment === null}>
+                        {isReplying ? 'Sending...' : 'Send Reply'}
+                    </Button>
+                </div>
+            </form>
+        {/if}
+
+        {#if $viewMode === 'nested'}
+            {#if comment.replies && comment.replies.length > 0}
+                <div class="replies-container mt-4 space-y-4">
+                    {#each comment.replies as reply (reply.id)}
+                        {#if showAllComments || !reply.isSpam}
+                            <svelte:self comment={reply} {showAllComments} {topic_id} {connect_executed}/>
+                        {/if}
+                    {/each}
+                </div>
+            {/if}
+        {/if}
+    </div>
 {/if}
 
 <style lang="postcss">
