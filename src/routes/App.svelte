@@ -297,9 +297,14 @@
 					target="_blank"
 					>Profile creation tx: {profile_creation_tx}</a>
 				</span>
+			{:else}
+				{#if !profile}
+				<!--Small-->
+					<a class="text-sm">Tip: Create a profile on the header menu to build your reputation</a>
+				{/if}
 			{/if}
 
-		<div class="mb-8 flex items-end space-x-2">
+		<div class="mb-8 flex items-end space-x-2" style="margin-top: 2rem;">
 			<div class="flex-1">
 				<label for="topic-id-input" class="text-lg font-semibold">Topic ID</label>
 				<input
@@ -334,7 +339,7 @@
 				<div class="flex gap-4 items-center">
 					<Button variant={sentiment === true ? "default" : "outline"} size="icon" on:click={() => sentiment = true}><ThumbsUp /></Button>
 					<Button variant={sentiment === false ? "default" : "outline"} size="icon" on:click={() => sentiment = false}><ThumbsDown /></Button>
-					<Button type="submit" disabled={isPostingComment || !newCommentText.trim() || sentiment === null}>
+					<Button type="submit" disabled={isPostingComment || !newCommentText.trim() || !profile}>
 						{isPostingComment ? "Posting..." : "Post Comment"}
 					</Button>
 				</div>
@@ -410,11 +415,11 @@
 		<p class="text-base mb-3">{comment.text}</p>
 
 		<div class="flex items-center gap-4 mb-2">
-			<Button variant="ghost" size="sm" on:click={() => showReplyForm = !showReplyForm}>
+			<Button variant="ghost" size="sm" on:click={() => showReplyForm = !showReplyForm} disabled={!profile}>
 				{showReplyForm ? 'Cancel' : 'Reply'}
 			</Button>
 			{#if !comment.isSpam}
-				<Button variant="ghost" size="sm" class="text-red-500" on:click={handleFlag} disabled={isFlagging}>
+				<Button variant="ghost" size="sm" class="text-red-500" on:click={handleFlag} disabled={isFlagging || !profile}>
 					{isFlagging ? 'Flagging...' : 'Mark Spam'}
 				</Button>
 			{:else}
