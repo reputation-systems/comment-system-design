@@ -7,4 +7,5 @@ export interface Comment {
     isSpam: boolean;
     replies: Comment[];
     submitting: boolean;
+    sentiment: boolean;
 }

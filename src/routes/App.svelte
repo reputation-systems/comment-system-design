@@ -355,7 +355,15 @@
 {:else}
 	<div class="comment-container border rounded-md p-4 bg-card">
 		<div class="flex justify-between items-center mb-2">
-			<span class="font-semibold text-sm">@{comment.authorProfileTokenId.slice(0, 6)}</span>
+			<div class="flex items-center gap-2">
+				<span class="font-semibold text-sm">@{comment.authorProfileTokenId.slice(0, 6)}</span>
+
+				{#if comment.sentiment === true}
+					<ThumbsUp class="h-4 w-4 text-green-500" />
+				{:else if comment.sentiment === false}
+					<ThumbsDown class="h-4 w-4 text-red-500" />
+				{/if}
+            </div>
 			<span class="text-xs text-muted-foreground">
 				{comment.submitting ? "Posting..." : new Date(comment.timestamp).toLocaleString()}
 			</span>
