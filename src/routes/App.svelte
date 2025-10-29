@@ -24,6 +24,7 @@
 	import { getScore, type Comment } from "$lib/ergo/commentObject";
 	import { User, ThumbsUp, ThumbsDown, X } from "lucide-svelte";
     import { get } from 'svelte/store';
+	import * as jdenticon from "jdenticon";
 
 	export let connect_executed = false;
 	export let comment: Comment | null = null;
@@ -58,6 +59,10 @@
 
 	function handleAnimationIteration() {
 		activeMessageIndex = (activeMessageIndex + 1) % footerMessages.length;
+	}
+
+	function getAvatarSvg(tokenId: string, size = 40): string {
+		return jdenticon.toSvg(tokenId, size);
 	}
 
     type FlatComment = Comment & { _parentId?: string };
@@ -445,6 +450,10 @@
     >
         <div class="flex justify-between items-center mb-2">
             <div class="flex items-center gap-2">
+				<div class="avatar w-10 h-10 rounded-full overflow-hidden">
+					{@html getAvatarSvg(comment.authorProfileTokenId, 40)}
+				</div>
+
                 <span class="font-semibold text-sm">@{comment.authorProfileTokenId.slice(0, 6)}</span>
 
 				{#if $viewMode === 'forum'}
@@ -621,6 +630,11 @@
 	.scrolling-text-wrapper {
 		@apply inline-block whitespace-nowrap;
 		animation: scroll-left 15s linear infinite;
+	}
+
+	.avatar svg {
+		border-radius: 50%;
+		display: block;
 	}
 
 	@keyframes scroll-left {
