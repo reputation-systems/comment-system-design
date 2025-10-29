@@ -502,7 +502,7 @@
             </div>
         </div>
 
-        <p class="text-base mb-3">{comment.text}</p>
+        <p class="text-base mb-3">{@html comment.text}</p>
         
         <div class="flex justify-between items-center flex-wrap gap-x-4 gap-y-2">
             <div class="flex items-center gap-4">

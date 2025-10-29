@@ -5,6 +5,8 @@ import { COMMENT_TYPE_NFT_ID, DISCUSSION_TYPE_NFT_ID, explorer_uri, PROFILE_TYPE
 import { ergo_tree_hash } from './contract';
 import { type TypeNFT, type ReputationProof, type RPBox } from './object';
 import { reputation_proof } from './store';
+import { marked } from 'marked';
+import DOMPurify from "dompurify";
 
 // Minimal definition of the Explorer API response for a box
 interface ApiBox {
@@ -197,6 +199,9 @@ export async function fetchComments(discussion: string, reply: boolean = false):
 
                 const number_of_spans = await fetchSpan(box.boxId);
                 const isSpam = number_of_spans > SPAM_LIMIT;
+
+                textContent = await marked(textContent);
+                textContent = DOMPurify.sanitize(textContent);
 
                 const comment: Comment = {
                     id: box.boxId,
