@@ -456,9 +456,18 @@
 
                 <span class="font-semibold text-sm">@{comment.authorProfileTokenId.slice(0, 6)}</span>
 
-				{#if $viewMode === 'forum'}
-					<span class="text-xs text-muted-foreground">#{comment.id.slice(0, 6)}</span>
-				{/if}
+				<a 
+					class="flex items-center text-xs text-muted-foreground gap-1 cursor-pointer"
+					style="margin-right: 2rem;"
+					href={web_explorer_uri_tx + comment.tx}
+					target="_blank"
+					rel="noopener noreferrer"
+				>
+					#{comment.id.slice(0, 6)}
+					<svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 3h7v7m0-7L10 14m-4 0H3v-7a2 2 0 012-2h7z" />
+					</svg>
+				</a>
 
                 {#if $viewMode === 'nested'}
                     {#if comment.sentiment === true}
@@ -495,9 +504,9 @@
                 {/if}
 
                 <span class="flex-shrink-0">
-                {#if comment.submitting_tx}
+                {#if comment.posting}
                     <a
-                    href={`${web_explorer_uri_tx}${comment.submitting_tx}`}
+                    href={`${web_explorer_uri_tx}${comment.tx}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     class="underline hover:text-primary"

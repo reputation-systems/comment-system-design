@@ -6,7 +6,8 @@ export interface Comment {
     timestamp: number;  // Timestamp of the height of the box.
     isSpam: boolean;
     replies: Comment[];
-    submitting_tx: string|null;
+    tx: string|null;
+    posting: boolean;
     sentiment: boolean;
 }
 

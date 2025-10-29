@@ -211,7 +211,8 @@ export async function fetchComments(discussion: string, reply: boolean = false):
                     timestamp: await getTimestampFromBlockId(box.blockId),
                     isSpam: isSpam,
                     replies: await fetchComments(box.boxId, true),
-                    submitting_tx: null,
+                    tx: box.transactionId,
+                    posting: false,
                     sentiment: box.additionalRegisters.R8?.renderedValue === 'true'
                 };
 
