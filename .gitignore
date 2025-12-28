@@ -9,7 +9,6 @@ src/lib/utils/__generated/
 src/lib/types/__generated/
 src/lib/services/__generated/
 node_modules/
-dist/
 .DS_Store
 .env
 npm-debug.log

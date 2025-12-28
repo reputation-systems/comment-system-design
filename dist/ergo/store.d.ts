@@ -1,0 +1,11 @@
+import { type ReputationProof, type TypeNFT } from './object';
+export declare const address: import("svelte/store").Writable<string | null>;
+export declare const network: import("svelte/store").Writable<string | null>;
+export declare const connected: import("svelte/store").Writable<boolean>;
+export declare const balance: import("svelte/store").Writable<number | null>;
+export declare const compute_deep_level: import("svelte/store").Writable<number>;
+export declare const searchStore: import("svelte/store").Writable<string | null>;
+export declare const data_store: import("svelte/store").Writable<any>;
+export declare const types: import("svelte/store").Writable<Map<string, TypeNFT>>;
+export declare const proofs: import("svelte/store").Writable<Map<string, ReputationProof>>;
+export declare const reputation_proof: import("svelte/store").Writable<ReputationProof | null>;
