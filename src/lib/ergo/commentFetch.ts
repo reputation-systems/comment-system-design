@@ -10,7 +10,7 @@ import DOMPurify from "dompurify";
 import {
   getTimestampFromBlockId,
   searchBoxes,
-  fetchAllProfiles
+  fetchAllUserProfiles
 } from "ergo-reputation-system";
 
 // Minimal definition of the Explorer API response for a box
@@ -149,9 +149,9 @@ export async function fetchProfile(ergo: any): Promise<ReputationProof | null> {
       return null;
     }
 
-    // fetchAllProfiles(explorerUri, is_self_defined, types, availableTypes)
+    // fetchAllUserProfiles(explorerUri, is_self_defined, types, availableTypes)
     // We pass an empty map for availableTypes for now as we don't have them yet.
-    const profiles = await fetchAllProfiles(
+    const profiles = await fetchAllUserProfiles(
       get(explorer_uri),
       true, // is_self_defined
       [PROFILE_TYPE_NFT_ID],
