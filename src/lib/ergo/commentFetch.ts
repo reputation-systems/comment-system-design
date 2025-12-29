@@ -11,7 +11,7 @@ import {
   getTimestampFromBlockId,
   searchBoxes,
   fetchAllUserProfiles
-} from "ergo-reputation-system";
+} from "reputation-system";
 
 // Minimal definition of the Explorer API response for a box
 interface ApiBox {

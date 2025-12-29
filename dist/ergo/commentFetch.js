@@ -4,7 +4,7 @@ import { COMMENT_TYPE_NFT_ID, DISCUSSION_TYPE_NFT_ID, explorer_uri, PROFILE_TYPE
 import { reputation_proof } from './store';
 import { marked } from 'marked';
 import DOMPurify from "dompurify";
-import { getTimestampFromBlockId, searchBoxes, fetchAllUserProfiles } from "ergo-reputation-system";
+import { getTimestampFromBlockId, searchBoxes, fetchAllUserProfiles } from "reputation-system";
 // Constants
 const LIMIT_PER_PAGE = 100;
 /**

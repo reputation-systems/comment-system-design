@@ -2,7 +2,7 @@ import { get } from 'svelte/store';
 import { proofs, compute_deep_level } from "./store";
 import { stringToRendered } from "./utils";
 // --- CORE TYPES ---
-// Types are now imported from ergo-reputation-system
+// Types are now imported from reputation-system
 // --- ENUMS & UTILITIES ---
 export function token_rendered(proof) {
     return stringToRendered(proof.token_id);

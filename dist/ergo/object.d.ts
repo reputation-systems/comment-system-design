@@ -1,4 +1,4 @@
-import { type ReputationProof, type RPBox, type TypeNFT } from "ergo-reputation-system";
+import { type ReputationProof, type RPBox, type TypeNFT } from "reputation-system";
 export { type ReputationProof, type RPBox, type TypeNFT };
 export declare function token_rendered(proof: ReputationProof): string;
 export declare enum Network {
