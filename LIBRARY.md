@@ -24,6 +24,7 @@ You can pass your own Svelte stores to control the configuration:
   - `showTopicInput: boolean` - Show input field to change the topic (default: `false`).
   - `showSpamToggle: boolean` - Show button to toggle displaying/hiding spam (default: `true`).
   - `showTopicScore: boolean` - Show the topic score (default: `true`).
+  - `forum_explorer_url: string | null` - Base URL for the topic explorer. If provided, an external link button will appear to open the current topic in the explorer.
 
 ### Compatibility
 

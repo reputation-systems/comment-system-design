@@ -26,6 +26,7 @@ export let web_explorer_uri_tx = null;
 export let web_explorer_uri_addr = null;
 export let web_explorer_uri_tkn = null;
 export let explorer_uri = null;
+export let forum_explorer_url = null;
 export let maxWidth = "100%";
 export let showTopicInput = false;
 export let showSpamToggle = true;
@@ -185,6 +186,33 @@ onMount(async () => {
                 <Button on:click={handleLoadThreads} variant="outline"
                     >Load</Button
                 >
+                {#if forum_explorer_url}
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        href={`${forum_explorer_url}/?topic=${topic_id}`}
+                        target="_blank"
+                        title="Open in Explorer"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            class="lucide lucide-external-link w-4 h-4"
+                            ><path
+                                d="M15 3h6v6"
+                            /><path d="M10 14 21 3" /><path
+                                d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+                            /></svg
+                        >
+                    </Button>
+                {/if}
             </div>
         </div>
     {/if}

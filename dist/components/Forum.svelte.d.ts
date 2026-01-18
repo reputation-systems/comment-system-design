@@ -8,6 +8,7 @@ declare const __propDef: {
         web_explorer_uri_addr?: Writable<string> | null;
         web_explorer_uri_tkn?: Writable<string> | null;
         explorer_uri?: Writable<string> | null;
+        forum_explorer_url?: string | null;
         maxWidth?: string;
         showTopicInput?: boolean;
         showSpamToggle?: boolean;

@@ -223,6 +223,7 @@
 			{web_explorer_uri_addr}
 			{web_explorer_uri_tkn}
 			{explorer_uri}
+			forum_explorer_url={$page.url.origin}
 			connected={$connected}
 			showTopicInput={true}
 			maxWidth="100%"
