@@ -1,5 +1,6 @@
 import { type Comment } from './commentObject';
 export declare function fetchThreadsAPI(projectId: string): Promise<Comment[]>;
+export declare function fetchCommentsByProfileAPI(profileId: string): Promise<Comment[]>;
 export declare function createProfileBox(): Promise<string>;
 export declare function postCommentAPI(projectId: string, text: string, sentiment: boolean): Promise<Comment>;
 export declare function replyToCommentAPI(parentCommentId: string, projectId: string, text: string, sentiment: boolean): Promise<Comment>;

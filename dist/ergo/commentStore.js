@@ -1,11 +1,15 @@
 import { writable, get } from 'svelte/store';
 import { reputation_proof } from './store';
 import { generate_reputation_proof } from './submit';
-import { fetchComments } from './commentFetch';
+import { fetchComments, fetchCommentsByProfile } from './commentFetch';
 import { COMMENT_TYPE_NFT_ID, DISCUSSION_TYPE_NFT_ID, PROFILE_TOTAL_SUPPLY, PROFILE_TYPE_NFT_ID, SPAM_FLAG_NFT_ID } from './envs';
 export async function fetchThreadsAPI(projectId) {
     console.log("API: fetchThreads", { projectId });
     return await fetchComments(projectId);
+}
+export async function fetchCommentsByProfileAPI(profileId) {
+    console.log("API: fetchCommentsByProfile", { profileId });
+    return await fetchCommentsByProfile(profileId);
 }
 export async function createProfileBox() {
     const profileTxId = await generate_reputation_proof(PROFILE_TOTAL_SUPPLY, PROFILE_TOTAL_SUPPLY, PROFILE_TYPE_NFT_ID, undefined, true, { name: "Anon" }, false, // The profile box should NOT be locked

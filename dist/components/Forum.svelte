@@ -205,9 +205,7 @@ onMount(async () => {
                             stroke-linecap="round"
                             stroke-linejoin="round"
                             class="lucide lucide-external-link w-4 h-4"
-                            ><path
-                                d="M15 3h6v6"
-                            /><path d="M10 14 21 3" /><path
+                            ><path d="M15 3h6v6" /><path d="M10 14 21 3" /><path
                                 d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
                             /></svg
                         >
@@ -350,24 +348,50 @@ onMount(async () => {
                     >
                         <div class="flex items-start gap-3">
                             <div class="flex-shrink-0">
-                                {@html getAvatarSvg(
-                                    comment.authorProfileTokenId,
-                                    40,
-                                )}
+                                {#if forum_explorer_url}
+                                    <a
+                                        href={`${forum_explorer_url}/?profile=${comment.authorProfileTokenId}`}
+                                        target="_blank"
+                                        class="block hover:opacity-80 transition-opacity"
+                                    >
+                                        {@html getAvatarSvg(
+                                            comment.authorProfileTokenId,
+                                            40,
+                                        )}
+                                    </a>
+                                {:else}
+                                    {@html getAvatarSvg(
+                                        comment.authorProfileTokenId,
+                                        40,
+                                    )}
+                                {/if}
                             </div>
 
                             <div class="flex-1 min-w-0">
                                 <div
                                     class="flex flex-wrap items-center gap-x-2 gap-y-1 mb-2"
                                 >
-                                    <span
-                                        class="text-sm font-medium text-primary"
-                                    >
-                                        @{comment.authorProfileTokenId.slice(
-                                            0,
-                                            6,
-                                        )}
-                                    </span>
+                                    {#if forum_explorer_url}
+                                        <a
+                                            href={`${forum_explorer_url}/?profile=${comment.authorProfileTokenId}`}
+                                            target="_blank"
+                                            class="text-sm font-medium text-primary hover:underline"
+                                        >
+                                            @{comment.authorProfileTokenId.slice(
+                                                0,
+                                                6,
+                                            )}
+                                        </a>
+                                    {:else}
+                                        <span
+                                            class="text-sm font-medium text-primary"
+                                        >
+                                            @{comment.authorProfileTokenId.slice(
+                                                0,
+                                                6,
+                                            )}
+                                        </span>
+                                    {/if}
 
                                     <a
                                         class="flex items-center text-xs text-muted-foreground gap-1 cursor-pointer"

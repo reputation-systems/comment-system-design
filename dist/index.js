@@ -1,5 +1,6 @@
 // Components
 export { default as Forum } from './components/Forum.svelte';
+export { default as Profile } from './components/Profile.svelte';
 // Ergo Logic
 export * from './ergo/commentFetch';
 export * from './ergo/commentObject';

@@ -10,6 +10,10 @@ export declare function fetchSpan(comment_id: string): Promise<number>;
  */
 export declare function fetchComments(discussion: string, reply?: boolean): Promise<Comment[]>;
 /**
+ * Searches the blockchain for all comments made by a specific profile.
+ */
+export declare function fetchCommentsByProfile(profileTokenId: string): Promise<Comment[]>;
+/**
  * Fetches the full ReputationProof object for the connected user.
  * @param ergo The connected wallet object (e.g., dApp Connector)
  */

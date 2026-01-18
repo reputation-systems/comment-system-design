@@ -9,6 +9,7 @@ export interface Comment {
     tx: string | null;
     posting: boolean;
     sentiment: boolean;
+    depth?: number;
 }
 /**
  * Calculates the score of a comment based on your specific rules.
