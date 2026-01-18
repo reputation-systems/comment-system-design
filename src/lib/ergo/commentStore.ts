@@ -3,7 +3,7 @@ import { reputation_proof } from './store';
 import { generate_reputation_proof } from './submit';
 import { type RPBox } from '$lib/ergo/object';
 import { type Comment } from './commentObject';
-import { fetchComments } from './commentFetch';
+import { fetchComments, fetchCommentsByProfile } from './commentFetch';
 import {
     COMMENT_TYPE_NFT_ID,
     DISCUSSION_TYPE_NFT_ID,
@@ -18,6 +18,12 @@ export async function fetchThreadsAPI(projectId: string): Promise<Comment[]> {
     console.log("API: fetchThreads", { projectId });
     return await fetchComments(projectId);
 }
+
+export async function fetchCommentsByProfileAPI(profileId: string): Promise<Comment[]> {
+    console.log("API: fetchCommentsByProfile", { profileId });
+    return await fetchCommentsByProfile(profileId);
+}
+
 
 export async function createProfileBox(): Promise<string> {
     const profileTxId = await generate_reputation_proof(

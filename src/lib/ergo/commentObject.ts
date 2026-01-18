@@ -6,9 +6,10 @@ export interface Comment {
     timestamp: number;  // Timestamp of the height of the box.
     isSpam: boolean;
     replies: Comment[];
-    tx: string|null;
+    tx: string | null;
     posting: boolean;
     sentiment: boolean;
+    depth?: number;
 }
 
 /**
@@ -39,7 +40,7 @@ export function getScore(comment: Comment): number {
 
     // We iterate over all direct replies (R) of the comment (C)
     for (const reply of comment.replies) {
-        
+
         const replyValue = getSentimentValue(reply);
 
         // If the reply is spam, it contributes nothing and we stop.
@@ -54,7 +55,7 @@ export function getScore(comment: Comment): number {
         if (reply.replies.length === 0) {
             totalScore += replyValue;
         }
-        
+
         // CASE 2: The 'reply' (R) DOES have replies.
         // (e.g., 'reply' is N1, and 'comment' is N0)
         else {
@@ -65,7 +66,7 @@ export function getScore(comment: Comment): number {
             // 2. We apply your special logic based on the sentiment of 'reply' (N1)
             if (replyValue === 1) { // If N1 is Positive
                 totalScore += replyValue + replyScore;
-            } 
+            }
             else if (replyValue === -1) { // If N1 is Negative
                 totalScore += replyValue - replyScore;
             }

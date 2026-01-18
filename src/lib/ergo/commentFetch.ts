@@ -138,6 +138,86 @@ export async function fetchComments(discussion: string, reply: boolean = false):
 }
 
 /**
+ * Searches the blockchain for all comments made by a specific profile.
+ */
+export async function fetchCommentsByProfile(profileTokenId: string): Promise<Comment[]> {
+  console.log("fetchCommentsByProfile", { profileTokenId });
+  let comments: Comment[] = [];
+
+  try {
+    const boxesGenerator = searchBoxes(
+      get(explorer_uri),
+      profileTokenId,
+      COMMENT_TYPE_NFT_ID
+    );
+
+    for await (const boxes of boxesGenerator) {
+      for (const box of boxes) {
+        console.log("box", box)
+        if (!box.assets?.length) {
+          console.log("No assets", box)
+          continue;
+        }
+
+        if (box.assets[0].tokenId !== profileTokenId) {
+          console.log("Not the profile token", box.assets[0].tokenId, profileTokenId)
+          continue;
+        }
+
+        let textContent: string = "";
+        try {
+          const rawValue = box.additionalRegisters.R9?.renderedValue;
+          if (rawValue) {
+            textContent = hexToUtf8(rawValue) ?? "";
+          }
+        } catch (e) {
+          console.log("Error decoding R9", e)
+          continue;
+        }
+
+        if (!textContent) {
+          console.log("No text content", box)
+          continue;
+        }
+
+        let discussionId = "Unknown";
+        if (box.additionalRegisters.R5?.renderedValue) {
+          discussionId = box.additionalRegisters.R5.renderedValue;
+        }
+
+        const number_of_spans = await fetchSpan(box.boxId);
+        const isSpam = number_of_spans > Number(get(SPAM_LIMIT));
+
+        textContent = await marked(textContent);
+        textContent = DOMPurify.sanitize(textContent);
+
+        const comment: Comment = {
+          id: box.boxId,
+          discussion: discussionId,
+          authorProfileTokenId: profileTokenId,
+          text: textContent,
+          timestamp: await getTimestampFromBlockId(get(explorer_uri), (box as any).blockId),
+          isSpam: isSpam,
+          replies: [],
+          tx: box.transactionId,
+          posting: false,
+          sentiment: box.additionalRegisters.R8?.renderedValue === 'true'
+        };
+
+        comments.push(comment);
+      }
+    }
+
+    comments.sort((a, b) => b.timestamp - a.timestamp);
+    return comments;
+
+  } catch (error) {
+    console.error('Error while fetching profile comments:', error);
+    return [];
+  }
+}
+
+/**
  * Fetches the full ReputationProof object for the connected user.
  * @param ergo The connected wallet object (e.g., dApp Connector)
  */

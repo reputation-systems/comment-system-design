@@ -17,7 +17,7 @@
 	import { type ReputationProof } from "$lib/ergo/object";
 	import { User, Settings } from "lucide-svelte";
 	import { get } from "svelte/store";
-	import { Forum } from "$lib/index.js";
+	import { Forum, Profile } from "$lib/index.js";
 	import SettingsModal from "$lib/components/SettingsModal.svelte";
 	import ProfileModal from "$lib/components/ProfileModal.svelte";
 
@@ -25,6 +25,7 @@
 
 	let profile: ReputationProof | null = null;
 	export let topic_id = get(currentTopicId);
+	let profile_id = "";
 
 	let profile_creation_tx = "";
 
@@ -144,16 +145,47 @@
 	// URL Synchronization
 	$: {
 		const urlTopic = $page.url.searchParams.get("topic");
-		if (urlTopic && urlTopic !== topic_id) {
-			topic_id = urlTopic;
+		const urlProfile = $page.url.searchParams.get("profile");
+
+		if (urlProfile) {
+			if (profile_id !== urlProfile) {
+				profile_id = urlProfile;
+				topic_id = ""; // Clear topic if profile is selected
+			}
+		} else if (urlTopic) {
+			if (topic_id !== urlTopic) {
+				topic_id = urlTopic;
+				profile_id = ""; // Clear profile if topic is selected
+			}
 		}
 	}
 
 	$: {
-		if (browser && topic_id) {
+		if (browser) {
 			const url = new URL(window.location.href);
-			if (url.searchParams.get("topic") !== topic_id) {
-				url.searchParams.set("topic", topic_id);
+			let changed = false;
+
+			if (profile_id) {
+				if (url.searchParams.get("profile") !== profile_id) {
+					url.searchParams.set("profile", profile_id);
+					changed = true;
+				}
+				if (url.searchParams.has("topic")) {
+					url.searchParams.delete("topic");
+					changed = true;
+				}
+			} else if (topic_id) {
+				if (url.searchParams.get("topic") !== topic_id) {
+					url.searchParams.set("topic", topic_id);
+					changed = true;
+				}
+				if (url.searchParams.has("profile")) {
+					url.searchParams.delete("profile");
+					changed = true;
+				}
+			}
+
+			if (changed) {
 				goto(url.toString(), {
 					keepFocus: true,
 					replaceState: true,
@@ -214,20 +246,30 @@
 			</p>
 		{/if}
 
-		<Forum
-			bind:topic_id
-			{profile}
-			{connect_executed}
-			spam_limit={SPAM_LIMIT}
-			{web_explorer_uri_tx}
-			{web_explorer_uri_addr}
-			{web_explorer_uri_tkn}
-			{explorer_uri}
-			forum_explorer_url={$page.url.origin}
-			connected={$connected}
-			showTopicInput={true}
-			maxWidth="100%"
-		/>
+		{#if !profile_id}
+			<Forum
+				bind:topic_id
+				{profile}
+				{connect_executed}
+				spam_limit={SPAM_LIMIT}
+				{web_explorer_uri_tx}
+				{web_explorer_uri_addr}
+				{web_explorer_uri_tkn}
+				{explorer_uri}
+				forum_explorer_url={$page.url.origin}
+				connected={$connected}
+				showTopicInput={true}
+				maxWidth="100%"
+			/>
+		{/if}
+
+		{#if profile_id}
+			<Profile
+				{profile_id}
+				forum_explorer_url={$page.url.origin}
+				{web_explorer_uri_tx}
+			/>
+		{/if}
 	</div>
 </main>
 
