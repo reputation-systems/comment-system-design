@@ -2,7 +2,7 @@ import { ErgoAddress, Network, SByte, SColl } from '@fleet-sdk/core';
 import { get } from 'svelte/store';
 import { type Comment } from './commentObject';
 import { hexToBytes, hexToUtf8, serializedToRendered } from './utils';
-import { COMMENT_TYPE_NFT_ID, DISCUSSION_TYPE_NFT_ID, explorer_uri, PROFILE_TYPE_NFT_ID, SPAM_FLAG_NFT_ID, SPAM_LIMIT } from './envs';
+import { COMMENT_TYPE_NFT_ID, DISCUSSION_TYPE_NFT_ID, explorer_uri, SPAM_FLAG_NFT_ID, SPAM_LIMIT } from './envs';
 import { type TypeNFT, type ReputationProof, type RPBox } from './object';
 import { reputation_proof } from './store';
 import { marked } from 'marked';
@@ -234,7 +234,7 @@ export async function fetchProfile(ergo: any): Promise<ReputationProof | null> {
     const profiles = await fetchAllUserProfiles(
       get(explorer_uri),
       true, // is_self_defined
-      [PROFILE_TYPE_NFT_ID],
+      [],
       new Map()
     );
 

@@ -68,13 +68,23 @@
 
     $: effectiveSpamLimit = spam_limit || localSpamLimit;
     $: effectiveWebTx = web_explorer_uri_tx || localWebTx;
+    $: activeProfile = profile ?? $reputation_proof;
+    $: if (profile !== null && profile !== $reputation_proof) {
+        reputation_proof.set(profile);
+    }
 
     $: hasProfile =
-        $reputation_proof !== null &&
-        $reputation_proof?.current_boxes?.length > 0;
+        activeProfile !== null &&
+        activeProfile?.current_boxes?.length > 0;
 
     function getAvatarSvg(tokenId: string, size = 40): string {
         return jdenticon.toSvg(tokenId, size);
+    }
+
+    function syncProfileStore() {
+        if (activeProfile !== null && activeProfile !== $reputation_proof) {
+            reputation_proof.set(activeProfile);
+        }
     }
 
     async function handleLoadThreads() {
@@ -105,6 +115,7 @@
         isPostingComment = true;
         postError = null;
         try {
+            syncProfileStore();
             await postComment(newCommentText, sentiment ?? false);
             newCommentText = "";
             sentiment = null;
@@ -122,6 +133,7 @@
         isPostingReply = true;
         postError = null;
         try {
+            syncProfileStore();
             await replyToComment(commentId, replyText, replySentiment ?? false);
             replyText = "";
             replySentiment = null;
@@ -138,6 +150,7 @@
         flaggingSpamId = commentId;
         postError = null;
         try {
+            syncProfileStore();
             await flagSpam(commentId);
         } catch (err: any) {
             console.error("Error flagging spam:", err);
@@ -179,6 +192,7 @@
 
     // Watch for wallet connection changes and load profile
     $: if (
+        !profile &&
         connected &&
         typeof window !== "undefined" &&
         typeof ergo !== "undefined"
@@ -187,6 +201,11 @@
     }
 
     async function loadUserProfile() {
+        if (profile) {
+            syncProfileStore();
+            return;
+        }
+
         try {
             await fetchProfile(ergo);
             console.log("Profile loaded:", $reputation_proof);
@@ -198,7 +217,7 @@
     onMount(async () => {
         handleLoadThreads();
 
-        if (connected && typeof ergo !== "undefined") {
+        if (!profile && connected && typeof ergo !== "undefined") {
             await loadUserProfile();
         }
     });
