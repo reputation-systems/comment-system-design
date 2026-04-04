@@ -1,18 +1,31 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
+import { readFileSync } from 'node:fs';
 import path from "path";
 
+function esRawPlugin() {
+	return {
+		name: 'es-raw',
+		enforce: 'pre' as const,
+		load(id: string) {
+			if (!id.endsWith('.es')) return null;
+			const source = readFileSync(id, 'utf-8');
+			return `export default ${JSON.stringify(source)};`;
+		}
+	};
+}
+
 export default defineConfig({
-	plugins: [sveltekit()],
+	plugins: [esRawPlugin(), sveltekit()],
 	test: {
-		globals: true, 
-		environment: 'node', 
+		globals: true,
+		environment: 'node',
 	},
-  	resolve: {
-    		alias: {
-      			$lib: path.resolve("./src/lib"),
-    		},
-  	},
+	resolve: {
+		alias: {
+			$lib: path.resolve("./src/lib"),
+		},
+	},
 	optimizeDeps: {
 		esbuildOptions: {
 			loader: {
@@ -21,10 +34,3 @@ export default defineConfig({
 		},
 	},
 });
-
-const config = {
-	// …
-	ssr: {
-	  noExternal: ['three']
-	}
-  }
