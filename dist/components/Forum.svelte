@@ -52,9 +52,20 @@ $:
 $:
   effectiveWebTx = web_explorer_uri_tx || localWebTx;
 $:
-  hasProfile = $reputation_proof !== null && $reputation_proof?.current_boxes?.length > 0;
+  activeProfile = profile ?? $reputation_proof;
+$:
+  if (profile !== null && profile !== $reputation_proof) {
+    reputation_proof.set(profile);
+  }
+$:
+  hasProfile = activeProfile !== null && activeProfile?.current_boxes?.length > 0;
 function getAvatarSvg(tokenId, size = 40) {
   return jdenticon.toSvg(tokenId, size);
+}
+function syncProfileStore() {
+  if (activeProfile !== null && activeProfile !== $reputation_proof) {
+    reputation_proof.set(activeProfile);
+  }
 }
 async function handleLoadThreads() {
   try {
@@ -82,6 +93,7 @@ async function handlePostComment() {
   isPostingComment = true;
   postError = null;
   try {
+    syncProfileStore();
     await postComment(newCommentText, sentiment ?? false);
     newCommentText = "";
     sentiment = null;
@@ -98,6 +110,7 @@ async function handleReply(commentId) {
   isPostingReply = true;
   postError = null;
   try {
+    syncProfileStore();
     await replyToComment(commentId, replyText, replySentiment ?? false);
     replyText = "";
     replySentiment = null;
@@ -113,6 +126,7 @@ async function handleFlagSpam(commentId) {
   flaggingSpamId = commentId;
   postError = null;
   try {
+    syncProfileStore();
     await flagSpam(commentId);
   } catch (err) {
     console.error("Error flagging spam:", err);
@@ -150,10 +164,14 @@ $:
     return acc + getScore(comment);
   }, 0);
 $:
-  if (connected && typeof window !== "undefined" && typeof ergo !== "undefined") {
+  if (!profile && connected && typeof window !== "undefined" && typeof ergo !== "undefined") {
     loadUserProfile();
   }
 async function loadUserProfile() {
+  if (profile) {
+    syncProfileStore();
+    return;
+  }
   try {
     await fetchProfile(ergo);
     console.log("Profile loaded:", $reputation_proof);
@@ -163,7 +181,7 @@ async function loadUserProfile() {
 }
 onMount(async () => {
   handleLoadThreads();
-  if (connected && typeof ergo !== "undefined") {
+  if (!profile && connected && typeof ergo !== "undefined") {
     await loadUserProfile();
   }
 });

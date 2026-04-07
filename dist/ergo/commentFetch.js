@@ -1,6 +1,6 @@
 import { get } from 'svelte/store';
 import { hexToUtf8 } from './utils';
-import { COMMENT_TYPE_NFT_ID, DISCUSSION_TYPE_NFT_ID, explorer_uri, PROFILE_TYPE_NFT_ID, SPAM_FLAG_NFT_ID, SPAM_LIMIT } from './envs';
+import { COMMENT_TYPE_NFT_ID, DISCUSSION_TYPE_NFT_ID, explorer_uri, SPAM_FLAG_NFT_ID, SPAM_LIMIT } from './envs';
 import { reputation_proof } from './store';
 import { marked } from 'marked';
 import DOMPurify from "dompurify";
@@ -160,7 +160,7 @@ export async function fetchProfile(ergo) {
         // fetchAllUserProfiles(explorerUri, is_self_defined, types, availableTypes)
         // We pass an empty map for availableTypes for now as we don't have them yet.
         const profiles = await fetchAllUserProfiles(get(explorer_uri), true, // is_self_defined
-        [PROFILE_TYPE_NFT_ID], new Map());
+        [], new Map());
         if (profiles.length === 0) {
             console.log('No profile boxes found for this user.');
             reputation_proof.set(null);
