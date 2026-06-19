@@ -20,10 +20,15 @@
 	import { Forum, Profile } from "$lib/index.js";
 	import SettingsModal from "$lib/components/SettingsModal.svelte";
 	import ProfileModal from "$lib/components/ProfileModal.svelte";
+	import ProfileSelector from "$lib/components/ProfileSelector.svelte";
+	import { reputation_proof } from "$lib/ergo/store";
 
 	export let connect_executed = false;
 
 	let profile: ReputationProof | null = null;
+	// Keep local `profile` synced with the global reputation_proof store so
+	// switching profiles via <ProfileSelector> updates the rest of the UI.
+	$: profile = $reputation_proof;
 	export let topic_id = get(currentTopicId);
 	let profile_id = "";
 
@@ -106,7 +111,10 @@
 
 		const init = async () => {
 			await connectWallet();
-			profile = await fetchProfile(ergo);
+			// fetchProfile populates the reputation_proof + user_profiles
+			// stores; the reactive `$: profile = $reputation_proof` keeps
+			// the local binding in sync.
+			await fetchProfile(ergo);
 		};
 		init();
 
@@ -201,6 +209,8 @@
 	<div class="navbar-content">
 		<a href="/" class="logo-container">Topic Chat</a>
 		<div class="flex-1"></div>
+
+		<ProfileSelector />
 
 		<button
 			class="user-icon"
