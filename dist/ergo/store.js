@@ -11,3 +11,7 @@ export const types = writable(new Map());
 // Main store for holding fetched reputation proofs, keyed by token ID.
 export const proofs = writable(new Map());
 export const reputation_proof = writable(null);
+// All profiles discovered for the connected wallet (any type). Used by the
+// profile selector so a user with multiple profiles (PROFILE, JUDGE, …) can
+// pick which one is active.
+export const user_profiles = writable([]);

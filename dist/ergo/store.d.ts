@@ -9,3 +9,4 @@ export declare const data_store: import("svelte/store").Writable<any>;
 export declare const types: import("svelte/store").Writable<Map<string, TypeNFT>>;
 export declare const proofs: import("svelte/store").Writable<Map<string, ReputationProof>>;
 export declare const reputation_proof: import("svelte/store").Writable<ReputationProof | null>;
+export declare const user_profiles: import("svelte/store").Writable<ReputationProof[]>;

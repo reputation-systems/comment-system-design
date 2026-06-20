@@ -1,7 +1,7 @@
 import { get } from 'svelte/store';
 import { hexToUtf8 } from './utils';
 import { COMMENT_TYPE_NFT_ID, DISCUSSION_TYPE_NFT_ID, explorer_uri, SPAM_FLAG_NFT_ID, SPAM_LIMIT } from './envs';
-import { reputation_proof } from './store';
+import { reputation_proof, user_profiles } from './store';
 import { marked } from 'marked';
 import DOMPurify from "dompurify";
 import { getTimestampFromBlockId, searchBoxes, fetchAllUserProfiles } from "reputation-system";
@@ -155,25 +155,33 @@ export async function fetchProfile(ergo) {
         const changeAddress = await ergo.get_change_address();
         if (!changeAddress) {
             reputation_proof.set(null);
+            user_profiles.set([]);
             return null;
         }
         // fetchAllUserProfiles(explorerUri, is_self_defined, types, availableTypes)
-        // We pass an empty map for availableTypes for now as we don't have them yet.
+        // Pass an empty array for `types` to accept ANY profile-type NFT id
+        // (PROFILE, JUDGE, etc.). Profile *creation* is still pinned to
+        // PROFILE_TYPE_NFT_ID — see commentStore.ts:createProfileBox. This
+        // mirrors the source-application pattern (fix/accept-any-profile-type).
         const profiles = await fetchAllUserProfiles(get(explorer_uri), true, // is_self_defined
         [], new Map());
+        user_profiles.set(profiles);
         if (profiles.length === 0) {
             console.log('No profile boxes found for this user.');
             reputation_proof.set(null);
             return null;
         }
+        // Default to the first profile; the user can switch via the profile
+        // selector in the header.
         const proof = profiles[0];
-        console.log(`Profile found: ${proof.token_id}`, proof);
+        console.log(`Profile found: ${proof.token_id} (1 of ${profiles.length})`, proof);
         reputation_proof.set(proof);
         return proof;
     }
     catch (error) {
         console.error('Error fetching profile:', error);
         reputation_proof.set(null);
+        user_profiles.set([]);
         return null;
     }
 }

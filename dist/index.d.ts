@@ -1,5 +1,6 @@
 export { default as Forum } from './components/Forum.svelte';
 export { default as Profile } from './components/Profile.svelte';
+export { default as ProfileSelector } from './components/ProfileSelector.svelte';
 export * from './ergo/commentFetch';
 export * from './ergo/commentObject';
 export * from './ergo/commentStore';
