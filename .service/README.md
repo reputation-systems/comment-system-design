@@ -67,10 +67,30 @@ curl -s localhost:8080/mcp -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```
 
+## Shared registry (no duplication)
+
+This `.service` holds **no copies** of the tool registry. `server-http.mjs`
+imports `TOOLS` / `HANDLERS` / `REST_ROUTES` straight from
+[`../mcp/tools.mjs`](../mcp/tools.mjs), and the `Dockerfile` copies the single
+shared `mcp/` (thin `core.mjs` + `lib.mjs` + `tools.mjs` and the prebuilt
+`mcp/_generated/lib.bundle.mjs`) into `/app/mcp`, preserving the repo's
+`/app/service` + `/app/mcp` sibling layout so `../mcp` resolves identically in
+local dev and inside the sealed VM. The read logic itself lives once in
+`src/lib/ergo/*` and is bundled by `npm run build:mcp` (see `../mcp/README.md`).
+
 ## Packaging
 
-`reputation-system` is vendored as `reputation-system-0.0.1.tgz` (a pre-packed
-tarball that already ships `dist/`), so the Docker build needs no git and runs
-no `svelte-package` step. `Dockerfile`, `service.json`, `start.sh` and
-`pack_config.json` follow the standard Celaut `.service` layout; the packer
-exports the image filesystem and seals the VM to `api.ergoplatform.com` only.
+`reputation-system` is the canonical upstream **github pin**
+(`github:reputation-systems/reputation-system`) — the same dependency used by the
+root app and `../mcp`, so reads and writes resolve one installed package (no
+drift). The old vendored `reputation-system-0.0.1.tgz` has been **removed**; the
+Docker build now installs the dependency from git (`npm install --omit=dev`).
+`Dockerfile`, `service.json`, `start.sh` and `pack_config.json` follow the
+standard Celaut `.service` layout; the packer exports the image filesystem and
+seals the VM to `api.ergoplatform.com` only.
+
+> Note: installing the git pin builds `reputation-system` via its `svelte-package`
+> `prepare` step. If a clean CI/Docker build hits an upstream build flake, pin a
+> known-good commit (e.g. `github:reputation-systems/reputation-system#<sha>`) or
+> commit a `package-lock.json` resolving to one — the same way the sibling
+> `source-application` service pins its lock.

@@ -1,0 +1,23 @@
+{
+  "name": "forum-application-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Full-surface MCP server (stdio) for the Forum Application on-chain discussion graph — reads bundled from the library's own src/, plus signer-backed writes.",
+  "main": "server.mjs",
+  "scripts": {
+    "build:mcp": "node build.mjs",
+    "mcp": "node server.mjs",
+    "start": "node server.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "reputation-system": "github:reputation-systems/reputation-system"
+  },
+  "devDependencies": {
+    "esbuild": "^0.18.20"
+  }
+}

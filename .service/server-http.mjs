@@ -25,7 +25,10 @@ import {
   ListToolsRequestSchema
 } from '@modelcontextprotocol/sdk/types.js';
 
-import { TOOLS, HANDLERS, REST_ROUTES } from './tools.mjs';
+// Shared registry lives ONCE in ../mcp (no duplicated copies in .service). The
+// Dockerfile preserves this sibling layout under /app (/app/service + /app/mcp)
+// so `../mcp` resolves identically in local dev and in the sealed microVM.
+import { TOOLS, HANDLERS, REST_ROUTES } from '../mcp/tools.mjs';
 
 const PORT = Number(process.env.PORT) || 8080;
 const MCP_PATH = '/mcp';

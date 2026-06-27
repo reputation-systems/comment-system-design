@@ -1,7 +1,0 @@
-# Installed at build time; never commit.
-node_modules/
-package-lock.json
-
-# Vendored reputation-system tarball MUST be committed (Docker build input);
-# re-include it despite the repo-root "*.tgz" rule.
-!reputation-system-0.0.1.tgz

@@ -21,10 +21,7 @@ import {
   DISCUSSION_TYPE_NFT_ID,
   COMMENT_TYPE_NFT_ID,
   SPAM_FLAG_NFT_ID,
-  PROFILE_TOTAL_SUPPLY
-} from './envs.mjs';
-
-import {
+  PROFILE_TOTAL_SUPPLY,
   fetchComments,
   fetchCommentsByProfile,
   fetchSpamCount,

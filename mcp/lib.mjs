@@ -10,7 +10,7 @@
  * functions backed by a Signer selected below.
  */
 import { SeedSigner, UnsignedSigner, searchBoxes } from 'reputation-system/node';
-import { EXPLORER_API, PROFILE_TYPE_NFT_ID } from './envs.mjs';
+import { EXPLORER_API, PROFILE_TYPE_NFT_ID } from './core.mjs';
 
 /**
  * Build the configured Signer from environment.
