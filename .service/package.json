@@ -1,0 +1,18 @@
+{
+  "name": "forum-application-mcp-service",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Celaut microVM exposing the forum-application surface as MCP (Streamable HTTP) + REST, backed by a seed/unsigned Ergo signer.",
+  "main": "server-http.mjs",
+  "scripts": {
+    "start": "node server-http.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "reputation-system": "file:./reputation-system-0.0.1.tgz"
+  }
+}
